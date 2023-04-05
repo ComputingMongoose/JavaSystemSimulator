@@ -2,6 +2,20 @@
 
 A computer system simulator (CPU, memory, peripherals) written in Java. The intent is to create not only a basic working simulation, but a look and feel of the simulated system.
 
+Releases are available as Tags: https://github.com/ComputingMongoose/JavaSystemSimulator/tags
+
+Pre-built jar files are available for each release. The syntax for running the simulator is:
+```
+java -jar JavaSystemSimulator.jar <simulation_folder>
+```
+
+The simulation folder must contain a simulation.json file with the simulation configuration and any required resource files (for example ROM images).
+
+Example simulations are available in the Simulations project: https://github.com/ComputingMongoose/Simulations
+
+# Youtube
+
+Checkout my YouTube channel for videos about this project: https://www.youtube.com/@ComputingMongoose/
 
 
 ## License
