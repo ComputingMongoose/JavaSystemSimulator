@@ -169,7 +169,7 @@ public class Intellec_4_frontpanel implements GenericControlDevice, GenericExecu
 					if(switches.get("CMAEnable").on) {
 						address=saved_address;
 						try {
-							data=memoryBus.read(Intel4040.MODE_RAM|saved_address);
+							data=memoryBus.read(mode|saved_address);
 						} catch (MemoryAccessException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -267,7 +267,7 @@ public class Intellec_4_frontpanel implements GenericControlDevice, GenericExecu
 	@SuppressWarnings("serial")
 	class FrontWindow extends JFrame{
 		public FrontWindow() {
-			super("Intellec 4/40 FrontPanel");
+			super("Intellec 4 FrontPanel");
 			setSize(1800,763);
 			setDefaultCloseOperation(EXIT_ON_CLOSE);
 			Cursor cur = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);

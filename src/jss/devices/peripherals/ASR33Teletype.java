@@ -2,6 +2,7 @@ package jss.devices.peripherals;
 
 import java.awt.Color;
 import java.awt.Cursor;
+import java.awt.FileDialog;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -13,17 +14,24 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
+import java.awt.image.BufferedImageOp;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
 import javax.imageio.ImageIO;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 
@@ -35,9 +43,11 @@ import jss.simulation.Simulation;
 
 public class ASR33Teletype extends AbstractSerialDevice {
 
-	Simulation sim;
-	
 	BufferedImage imgFrontPanel;
+	BufferedImage imgLoad;
+	//BufferedImage imgSave;
+	
+	int enable_load_tape;
 	
 	StringBuffer[] received_text;
 	int received_text_pointer;
@@ -49,6 +59,8 @@ public class ASR33Teletype extends AbstractSerialDevice {
 	boolean tape_active;
 	String tape_in;
 	BufferedReader tape_in_reader;
+	
+	int tape_in_compute_checksums;
 	
 	class FrontWindowMouseListener implements MouseListener {
 
@@ -70,8 +82,15 @@ public class ASR33Teletype extends AbstractSerialDevice {
 		}
 		
 		public void PeripheralSwitchClicked(String key, PeripheralSwitch sw) {
-			if(key.contentEquals("1")) {
-				synchronized(lock) {transmit.add("1");}
+			if(key.contentEquals("LOAD")) {
+				FileDialog fd=new FileDialog(win,"Load Tape",FileDialog.LOAD);
+				fd.setVisible(true);
+				File[] files=fd.getFiles();
+				if(files!=null && files.length>0) {
+					loadTape(files[0]);
+				}
+			}else {
+				synchronized(lock) {transmit.add(key);}
 			}
 		}
 
@@ -122,9 +141,8 @@ public class ASR33Teletype extends AbstractSerialDevice {
 	class FrontWindow extends JFrame{
 		public FrontWindow() {
 			super("ASR 33 Teletype");
-			
 			this.setLayout(null);
-			
+
 			setSize(1600,992);
 			setDefaultCloseOperation(EXIT_ON_CLOSE);
 			Cursor cur = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
@@ -145,6 +163,7 @@ public class ASR33Teletype extends AbstractSerialDevice {
                 }
             });	
 			timer.start();
+			
 		}
 		
 		@Override
@@ -179,10 +198,15 @@ public class ASR33Teletype extends AbstractSerialDevice {
 				}
 				g2.drawString( ctext, x, y + height );
 				y += height;
-			}			
+			}
+			
+			if(enable_load_tape==1) {
+				g2.drawImage(imgLoad.getScaledInstance(100, 100, Image.SCALE_SMOOTH), 85,100,null);
+			}
 			
 			Image img=back.getScaledInstance(this.getWidth(), this.getHeight(), Image.SCALE_SMOOTH);
 			g.drawImage(img,0,0,null);
+			
 		}
 	}
 	
@@ -196,6 +220,9 @@ public class ASR33Teletype extends AbstractSerialDevice {
 		super.configure(config, sim);
 
 		imgFrontPanel = ImageIO.read(getClass().getResource("/res/ASR33Teletype/asr33.png"));
+		imgLoad = ImageIO.read(getClass().getResource("/res/ASR33Teletype/load.png"));
+		
+		enable_load_tape=(int)config.getOptLong("enable_load_tape", 1);
 
 		received_text=new StringBuffer[14];
 		for(int i=0;i<received_text.length;i++) {
@@ -219,20 +246,140 @@ public class ASR33Teletype extends AbstractSerialDevice {
 		switches.put(":", new PeripheralSwitch(919,647,45,52,false,null,null));
 		switches.put("_", new PeripheralSwitch(975,647,45,52,false,null,null));
 		
+		if(enable_load_tape==1) {
+			switches.put("LOAD", new PeripheralSwitch(85,100,100,100,false,null,null));
+		}
+		
 		needsUpdate=false;;
 		
 		tape_active=false;
+		this.tape_in_compute_checksums=(int)config.getOptLong("tape_in_compute_checksums", 0);
 		tape_in=config.getOptString("tape_in", "");
+		tape_in_reader=null;
 		if(tape_in!=null && tape_in.length()>0) {
-			try {
-				tape_in_reader=new BufferedReader(
-						new InputStreamReader(
-								new FileInputStream(sim.getFilePath(tape_in).toFile()),Charset.forName("UTF8")));
-			}catch(Exception ex) {tape_in_reader=null;}
+			loadTape(sim.getFilePath(tape_in).toFile());
 		}
 		
 		win=new FrontWindow();
 		win.repaint();
+	}
+	
+	public void loadTape(File tapeFile) {
+		if(tape_in_reader!=null) {
+			try {
+				tape_in_reader.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			tape_in_reader=null;
+		}
+		
+		try {
+			tape_in_reader=new BufferedReader(
+					new InputStreamReader(
+							new FileInputStream(tapeFile),Charset.forName("UTF8")));
+			
+			if(tape_in_compute_checksums==1) {
+				ByteArrayOutputStream baos=new ByteArrayOutputStream(64*1024);
+				PrintWriter out=new PrintWriter(new OutputStreamWriter(baos));
+				StringBuffer buff=new StringBuffer();
+				int lnum=0;
+				for(String line=tape_in_reader.readLine();line!=null;line=tape_in_reader.readLine()) {
+					lnum++;
+					buff.setLength(0);
+					int state=0;
+					int length=0;
+					int current=0;
+					int chk=0;
+					int num=0;
+					boolean first_skip=true;
+					int oldchk=0;
+					for(int i=0;i<line.length();i++) {
+						char c=line.charAt(i);
+						switch(state) {
+						case 0: // wait for :
+							buff.append(c);
+							if(c==':')state=1;
+							break;
+							
+						case 1: // length start
+							buff.append(c);
+							length=Integer.parseInt(""+c,16);
+							state=2;
+							break;
+							
+						case 2: // length second nibble
+							buff.append(c);
+							length=(length<<4) | Integer.parseInt(""+c,16);
+							state=3;
+							chk+=length;
+							chk&=0xFF;
+							break;
+							
+						case 3: // regular byte
+							buff.append(c);
+							current=Integer.parseInt(""+c,16);
+							state=4;
+							break;
+							
+						case 4: // regular byte, second nibble
+							buff.append(c);
+							current=(current<<4) | Integer.parseInt(""+c,16);
+							state=4;
+							chk+=current;
+							chk&=0xFF;
+							num++;
+							if(first_skip) {
+								if(num==3) {first_skip=false;num=0;}
+								state=3;
+							}else {
+								if(num<length)state=3; // read next
+								else {
+									state=5;
+									chk=((chk^0xFF)+1)&0xFF;
+									String chks=Integer.toHexString(chk).toUpperCase();
+									if(chks.length()<2)chks="0"+chks;
+									buff.append(chks);
+								}
+							}
+							break;
+							
+						case 5: // old chk
+							oldchk=Integer.parseInt(""+c,16);
+							state=6;
+							break;
+							
+						case 6: // old chk, second nibble
+							oldchk=(oldchk<<4) | Integer.parseInt(""+c,16);
+							state=7;
+							if(oldchk!=chk) {
+								this.sim.writeToCurrentLog("loadTape Invalid Checksum in line "+lnum);
+							}
+							break;
+							
+						case 7: // copy the rest of the line
+							buff.append(c);
+							break;
+						}
+					}
+					
+					out.println(buff.toString());
+				}
+				
+				out.flush();
+				out.close();
+				
+				tape_in_reader.close();
+				
+				tape_in_reader=new BufferedReader(
+						new InputStreamReader(new ByteArrayInputStream(baos.toByteArray())));
+			}
+		}catch(Exception ex) {tape_in_reader=null;}
+
+		tape_in="";
+		if(tape_in_reader!=null)tape_in=tapeFile.getAbsolutePath();
+			
 	}
 
 	@Override
@@ -288,6 +435,7 @@ public class ASR33Teletype extends AbstractSerialDevice {
 		try {
 			int c=tape_in_reader.read();
 			transmit.add(""+(char)c);
+			System.out.print((char)c);
 		}catch(IOException ex) {;}
 	}
 

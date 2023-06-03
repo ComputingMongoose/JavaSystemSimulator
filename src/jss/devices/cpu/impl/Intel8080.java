@@ -131,8 +131,8 @@ case 0x00: //NOP
 break;
 
 case 0x01: //LXI B
-registers[0]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
 registers[1]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+registers[0]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
 break;
 
 case 0x02: //STAX B
@@ -214,8 +214,8 @@ acc=tmp1;;
 break;
 
 case 0x11: //LXI D
-registers[2]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
 registers[3]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+registers[2]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
 break;
 
 case 0x12: //STAX D
@@ -295,8 +295,8 @@ flags=(flags&0xFE)|(tmp1&0x1);
 break;
 
 case 0x21: //LXI H
-registers[4]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
 registers[5]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+registers[4]=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
 break;
 
 case 0x22: //SHLD
@@ -953,7 +953,7 @@ break;
 
 case 0x98: //SBB R SSS=B
 tmp1=acc;
-tmp2=tmp1 + ((registers[0])^0xFF) + 1 + (flags&0x01);
+tmp2=tmp1 + ((registers[0] + (flags&0x01))^0xFF) + 1 ;
 flags=(flags&0xFE)|(((tmp2&0x100)==0x100)?(1):(0));;
 tmp2=tmp2&0xFF;
 acc=tmp2;
@@ -963,7 +963,7 @@ break;
 
 case 0x99: //SBB R SSS=C
 tmp1=acc;
-tmp2=tmp1 + ((registers[1])^0xFF) + 1 + (flags&0x01);
+tmp2=tmp1 + ((registers[1] + (flags&0x01))^0xFF) + 1 ;
 flags=(flags&0xFE)|(((tmp2&0x100)==0x100)?(1):(0));;
 tmp2=tmp2&0xFF;
 acc=tmp2;
@@ -973,7 +973,7 @@ break;
 
 case 0x9A: //SBB R SSS=D
 tmp1=acc;
-tmp2=tmp1 + ((registers[2])^0xFF) + 1 + (flags&0x01);
+tmp2=tmp1 + ((registers[2] + (flags&0x01))^0xFF) + 1 ;
 flags=(flags&0xFE)|(((tmp2&0x100)==0x100)?(1):(0));;
 tmp2=tmp2&0xFF;
 acc=tmp2;
@@ -983,7 +983,7 @@ break;
 
 case 0x9B: //SBB R SSS=E
 tmp1=acc;
-tmp2=tmp1 + ((registers[3])^0xFF) + 1 + (flags&0x01);
+tmp2=tmp1 + ((registers[3] + (flags&0x01))^0xFF) + 1 ;
 flags=(flags&0xFE)|(((tmp2&0x100)==0x100)?(1):(0));;
 tmp2=tmp2&0xFF;
 acc=tmp2;
@@ -993,7 +993,7 @@ break;
 
 case 0x9C: //SBB R SSS=H
 tmp1=acc;
-tmp2=tmp1 + ((registers[4])^0xFF) + 1 + (flags&0x01);
+tmp2=tmp1 + ((registers[4] + (flags&0x01))^0xFF) + 1 ;
 flags=(flags&0xFE)|(((tmp2&0x100)==0x100)?(1):(0));;
 tmp2=tmp2&0xFF;
 acc=tmp2;
@@ -1003,7 +1003,7 @@ break;
 
 case 0x9D: //SBB R SSS=L
 tmp1=acc;
-tmp2=tmp1 + ((registers[5])^0xFF) + 1 + (flags&0x01);
+tmp2=tmp1 + ((registers[5] + (flags&0x01))^0xFF) + 1 ;
 flags=(flags&0xFE)|(((tmp2&0x100)==0x100)?(1):(0));;
 tmp2=tmp2&0xFF;
 acc=tmp2;
@@ -1023,7 +1023,7 @@ break;
 
 case 0x9F: //SBB R SSS=A
 tmp1=acc;
-tmp2=tmp1 + ((acc)^0xFF) + 1 + (flags&0x01);
+tmp2=tmp1 + ((acc + (flags&0x01))^0xFF) + 1 ;
 flags=(flags&0xFE)|(((tmp2&0x100)==0x100)?(1):(0));;
 tmp2=tmp2&0xFF;
 acc=tmp2;
@@ -1264,9 +1264,9 @@ SP++; SP&=0xFFFF;
 break;
 
 case 0xC2: //JC CCC=NZ
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x40)==0) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1278,13 +1278,13 @@ PC=tmp2;
 break;
 
 case 0xC4: //CALLC CCC=NZ
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x40)==0) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1330,32 +1330,32 @@ SP++; SP&=0xFFFF;
 break;
 
 case 0xCA: //JC CCC=Z
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x40)==0x40) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
 
 case 0xCC: //CALLC CCC=Z
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x40)==0x40) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
 
 case 0xCD: //CALL
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 SP--; SP&=0xFFFF;
 memoryBus.write(SP,((PC>>8)&0xFF));
 SP--; SP&=0xFFFF;
 memoryBus.write(SP,(PC&0xFF));
-tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 PC=tmp2;
 break;
 
@@ -1393,9 +1393,9 @@ SP++; SP&=0xFFFF;
 break;
 
 case 0xD2: //JC CCC=NC
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x1)==0) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1405,13 +1405,13 @@ ioBus.write(((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_
 break;
 
 case 0xD4: //CALLC CCC=NC
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x1)==0) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1451,9 +1451,9 @@ if( ((flags&0x1)==0x1) ){
 break;
 
 case 0xDA: //JC CCC=C
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x1)==0x1) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1463,13 +1463,13 @@ acc=(int)ioBus.read(((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[in
 break;
 
 case 0xDC: //CALLC CCC=C
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x1)==0x1) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1509,9 +1509,9 @@ SP++; SP&=0xFFFF;
 break;
 
 case 0xE2: //JC CCC=PO
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x4)==0) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1528,13 +1528,13 @@ SP--; SP&=0xFFFF;
 break;
 
 case 0xE4: //CALLC CCC=PO
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x4)==0) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1574,9 +1574,9 @@ PC=((registers[4]<<8)|(registers[5]));
 break;
 
 case 0xEA: //JC CCC=PE
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x4)==0x4) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1591,13 +1591,13 @@ registers[3]=tmp1;
 break;
 
 case 0xEC: //CALLC CCC=PE
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x4)==0x4) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1633,9 +1633,9 @@ SP++; SP&=0xFFFF;
 break;
 
 case 0xF2: //JC CCC=P
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x80)==0) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1645,13 +1645,13 @@ flag_ei=false;
 break;
 
 case 0xF4: //CALLC CCC=P
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x80)==0) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1691,9 +1691,9 @@ SP=((registers[4]<<8)|(registers[5]));
 break;
 
 case 0xFA: //JC CCC=M
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x80)==0x80) ){
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;
@@ -1703,13 +1703,13 @@ flag_ei=true;
 break;
 
 case 0xFC: //CALLC CCC=M
+tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
+tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
 if( ((flags&0x80)==0x80) ){
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,((PC>>8)&0xFF));
   SP--; SP&=0xFFFF;
   memoryBus.write(SP,(PC&0xFF));
-  tmp1=((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++]));
-  tmp2=((((int_instr==null)?((int)memoryBus.read(PC++)):(int_instr[int_instr_pc++])))<<8)|tmp1;
   PC=tmp2;
 }
 break;

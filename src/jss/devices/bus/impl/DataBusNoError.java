@@ -1,6 +1,7 @@
 package jss.devices.bus.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
@@ -18,6 +19,9 @@ public class DataBusNoError implements DataBus {
 	
 	long last_address;
 	long last_data;
+	Simulation sim;
+	DeviceConfiguration config;
+	boolean bLogMisses;
 	
 	public DataBusNoError() {
 		devices=new ArrayList<>(100);
@@ -26,6 +30,10 @@ public class DataBusNoError implements DataBus {
 	@Override
 	public void configure(DeviceConfiguration config, Simulation sim)
 			throws DeviceConfigurationException, ConfigurationValueTypeException {
+		this.sim=sim;
+		this.config=config;
+		bLogMisses=config.getOptLong("log_misses", 0)!=0;
+		
 	}
 
 	@Override
@@ -42,13 +50,18 @@ public class DataBusNoError implements DataBus {
 	public long read(long address) throws MemoryAccessException {
 		last_address=address;
 		last_data=0;
+		boolean found=false;
 		try {
 			for(DataBusDevice d:devices) {
 				if(d.isValidAddress(address)) {
 					last_data|=d.read(address);
+					found=true;
 				}
 			}
 		}catch(MemoryAccessException e) {;}
+		if(bLogMisses && !found) {
+			sim.writeToCurrentLog(String.format("BUS [%s] READ MISS [%x]", this.config.getName(), address));
+		}
 		return last_data;
 	}
 
@@ -56,13 +69,18 @@ public class DataBusNoError implements DataBus {
 	public void write(long address, long value) throws MemoryAccessException {
 		last_address=address;
 		last_data=value;
-		
+		boolean found=false;
 		try {
 			for(DataBusDevice d:devices) {
-				if(d.isValidAddress(address))
+				if(d.isValidAddress(address)) {
 					d.write(address,value);
+					found=true;
+				}
 			}
 		}catch(MemoryAccessException e) {;}
+		if(bLogMisses && !found) {
+			sim.writeToCurrentLog(String.format("BUS [%s] WRITE MISS [%x] [%x]", this.config.getName(), address,value));
+		}
 
 	}
 

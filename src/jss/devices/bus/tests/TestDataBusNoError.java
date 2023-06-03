@@ -17,7 +17,7 @@ public class TestDataBusNoError {
 	
 	public static void main(String[] args) throws MemoryAccessException, Exception {
 		System.out.println("Testing DataBusNoError");
-		DeviceConfiguration config=new DeviceConfiguration();
+		DeviceConfiguration config=new DeviceConfiguration("","");
 		config.set("size", new ConfigurationValue(16));
 		config.set("initialization_policy", new ConfigurationValue("ZERO"));
 		
@@ -26,7 +26,7 @@ public class TestDataBusNoError {
 		mem.initialize();
 		
 		DataBus bus=new DataBusNoError();
-		bus.configure(new DeviceConfiguration(),null);
+		bus.configure(new DeviceConfiguration("",""),null);
 		bus.initialize();
 		
 		bus.attachDataDevice(mem, 0, 15, 0);

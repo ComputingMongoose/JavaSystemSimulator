@@ -16,7 +16,7 @@ public class MemoryW8D32 extends AbstractMemoryDevice {
 	}
 	
 	public void write(long address, long data) throws MemoryAccessException {
-		if(address>=mem.length-3)throw new MemoryAccessException(address,MemoryOperation.READ);
+		if(address>=mem.length-3)throw new MemoryAccessException(address,MemoryOperation.WRITE);
 		mem[(int) address]=(byte) (data & 0xFF);
 		mem[(int) address+1]=(byte) ((data>>8) & 0xFF);
 		mem[(int) address+2]=(byte) ((data>>16) & 0xFF);

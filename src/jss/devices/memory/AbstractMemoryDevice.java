@@ -3,7 +3,9 @@ package jss.devices.memory;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import jss.configuration.ConfigurationValueOptionException;
@@ -17,11 +19,24 @@ public abstract class AbstractMemoryDevice implements MemoryDevice {
 	protected DeviceConfiguration config;
 	protected byte[] mem;
 	protected Simulation sim;
-	
-	public void loadHex(Path hexFile, boolean invertNibbles) throws IOException {
+
+	public void loadHex(Path hexFile, boolean invertNibbles, int offset) throws IOException {
 		BufferedReader reader = new BufferedReader(
 				new InputStreamReader(
 						new FileInputStream(hexFile.toFile()),Charset.forName("UTF8")));
+		loadHex(reader,invertNibbles,offset);
+		reader.close();
+	}
+	
+	public void loadHex(URL hexFile, boolean invertNibbles, int offset) throws IOException {
+		BufferedReader reader = new BufferedReader(
+				new InputStreamReader(
+						hexFile.openStream(),Charset.forName("UTF8")));
+		loadHex(reader,invertNibbles,offset);
+		reader.close();
+	}
+
+	public void loadHex(BufferedReader reader, boolean invertNibbles, int offset) throws IOException {
 		long startAddress=0;
 		for(String line = reader.readLine();line!=null;line=reader.readLine()) {
 			// start code
@@ -33,7 +48,8 @@ public abstract class AbstractMemoryDevice implements MemoryDevice {
 			int byteCount=Integer.parseInt(bc,16);
 			
 			// address, 4 hex
-			// TODO implement address read from HEX file
+			String adr=line.substring(pos+3,pos+7);
+			startAddress=Integer.parseInt(adr,16)-offset;
 			
 			// record type
 			String rec=line.substring(pos+7,pos+9);
@@ -46,7 +62,27 @@ public abstract class AbstractMemoryDevice implements MemoryDevice {
 				startAddress++;
 			}
 		}
-		reader.close();
+	}
+
+	public void loadBin(Path binFile, boolean invertNibbles, int offset) throws IOException {
+		InputStream in = new FileInputStream(binFile.toFile());
+		loadBin(in,invertNibbles,offset);
+		in.close();
+	}
+	
+	public void loadBin(URL binFile, boolean invertNibbles, int offset) throws IOException {
+		InputStream in=binFile.openStream();
+		loadBin(in,invertNibbles,offset);
+		in.close();
+	}
+	
+	public void loadBin(InputStream in, boolean invertNibbles, int offset) throws IOException {
+		long startAddress=offset;
+		for(int data=in.read();data!=-1;data=in.read()) {
+			if(invertNibbles)data=((data>>4)&0x0F)|((data<<4)&0xF0);;
+			mem[(int) startAddress]=(byte) data;
+			startAddress++;
+		}
 	}
 	
 	@Override
@@ -67,6 +103,12 @@ public abstract class AbstractMemoryDevice implements MemoryDevice {
 			byte fixed=(byte) config.getLong("fixed_value");
 			fixed=(byte)(fixed&0xFF);
 			for(int i=0;i<mem.length;i++)mem[i]=fixed;
+		}else if(policy.contentEquals("VALUES")) {
+			String values=config.getString("initialization_values");
+			String[] valuesHex=values.split("[ ,]+");
+			for(int i=0;i<mem.length && i<valuesHex.length;i++) {
+				mem[i]=(byte) (Integer.parseInt(valuesHex[i],16) & 0xFF);
+			}
 		}else{
 			throw new ConfigurationValueOptionException("initialization_policy",policy);
 		}
@@ -75,8 +117,18 @@ public abstract class AbstractMemoryDevice implements MemoryDevice {
 			boolean invertNibbles=false;
 			if(config.contains("invert_nibbles"))
 				invertNibbles=(config.getLong("invert_nibbles")==1);
-			loadHex(sim.getFilePath(config.getString("load_hex")),invertNibbles);
+			int load_hex_offset=(int)config.getOptLong("load_hex_offset", 0);
+			loadHex(sim.getFilePath(config.getString("load_hex")),invertNibbles,load_hex_offset);
 		}
+
+		if(config.contains("load_bin")) {
+			boolean invertNibbles=false;
+			if(config.contains("invert_nibbles"))
+				invertNibbles=(config.getLong("invert_nibbles")==1);
+			int load_offset=(int)config.getOptLong("load_bin_offset", 0);
+			loadBin(sim.getFilePath(config.getString("load_bin")),invertNibbles,load_offset);
+		}
+	
 	}
 
 	public byte[] getMem() {

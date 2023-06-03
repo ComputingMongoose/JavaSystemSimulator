@@ -4,10 +4,15 @@ import java.util.HashMap;
 
 public class DeviceConfiguration {
 
+	private String name;
+	private String type;
+	
 	private HashMap<String,ConfigurationValue> config;
 	
-	public DeviceConfiguration() {
+	public DeviceConfiguration(String name, String type) {
 		this.config=new HashMap<>(100);
+		this.name=name;
+		this.type=type;
 	}
 	
 	public boolean contains(String name) {
@@ -38,6 +43,14 @@ public class DeviceConfiguration {
 	public String getOptString(String name, String def) throws DeviceConfigurationException, ConfigurationValueTypeException {
 		if(!contains(name))return def;
 		return getString(name);
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public String getType() {
+		return type;
 	}
 
 }

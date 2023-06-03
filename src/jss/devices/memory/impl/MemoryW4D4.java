@@ -21,7 +21,7 @@ public class MemoryW4D4 extends AbstractMemoryDevice {
 	public void write(long address, long rdata) throws MemoryAccessException {
 		long byteAddress=address>>1;
 		
-		if(byteAddress>=mem.length)throw new MemoryAccessException(address,MemoryOperation.READ);
+		if(byteAddress>=mem.length)throw new MemoryAccessException(address,MemoryOperation.WRITE);
 
 		long data=rdata&0x0F;
 		long d=mem[(int) byteAddress] & 0xFF;

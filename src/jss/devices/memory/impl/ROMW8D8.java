@@ -7,7 +7,7 @@ public class ROMW8D8 extends MemoryW8D8 {
 
 	@Override
 	public void write(long address, long data) throws MemoryAccessException {
-		throw new MemoryAccessException(address,MemoryOperation.READ);
+		throw new MemoryAccessException(address,MemoryOperation.WRITE);
 	}
 	
 }

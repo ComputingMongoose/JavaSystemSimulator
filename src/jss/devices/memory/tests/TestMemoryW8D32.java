@@ -15,7 +15,7 @@ public class TestMemoryW8D32 {
 	
 	public static void main(String[] args) throws MemoryAccessException, Exception {
 		System.out.println("Testing MemoryW8D32");
-		DeviceConfiguration config=new DeviceConfiguration();
+		DeviceConfiguration config=new DeviceConfiguration("","");
 		config.set("size", new ConfigurationValue(16));
 		config.set("initialization_policy", new ConfigurationValue("ZERO"));
 		

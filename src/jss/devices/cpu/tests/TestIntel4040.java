@@ -34,7 +34,7 @@ public class TestIntel4040 {
 		System.out.println("Testing Intel4040");
 
 		// Memory
-		DeviceConfiguration configROM = new DeviceConfiguration();
+		DeviceConfiguration configROM = new DeviceConfiguration("","");
 		configROM.set("size", new ConfigurationValue(16));
 		configROM.set("initialization_policy", new ConfigurationValue("ZERO"));
 		MemoryW4D4 rom = new MemoryW4D4();
@@ -47,21 +47,21 @@ public class TestIntel4040 {
 		}
 
 		// Memory BUS
-		DeviceConfiguration configMemoryBus = new DeviceConfiguration();
+		DeviceConfiguration configMemoryBus = new DeviceConfiguration("","");
 		DataBus memoryBus=new DataBusNoError();
 		memoryBus.configure(configMemoryBus,null);
 		memoryBus.initialize();
 		memoryBus.attachDataDevice(rom, 0, 32, 0);
 		
 		// Control BUS
-		DeviceConfiguration configControlBus = new DeviceConfiguration();
+		DeviceConfiguration configControlBus = new DeviceConfiguration("","");
 		configControlBus.set("signals", new ConfigurationValue("TEST,INT"));
 		ControlBus controlBus=new ControlBusBasic();
 		controlBus.configure(configControlBus,null);
 		controlBus.initialize();
 		
 		// CPU
-		DeviceConfiguration configCPU = new DeviceConfiguration();
+		DeviceConfiguration configCPU = new DeviceConfiguration("","");
 		Intel4040 cpu = new Intel4040();
 		cpu.configure(configCPU,null);
 		cpu.initialize();

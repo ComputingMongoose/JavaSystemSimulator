@@ -15,7 +15,7 @@ public class TestMemoryW4D4 {
 	
 	public static void main(String[] args) throws MemoryAccessException, Exception {
 		System.out.println("Testing MemoryW4D4");
-		DeviceConfiguration config=new DeviceConfiguration();
+		DeviceConfiguration config=new DeviceConfiguration("","");
 		config.set("size", new ConfigurationValue(16));
 		config.set("initialization_policy", new ConfigurationValue("ZERO"));
 		

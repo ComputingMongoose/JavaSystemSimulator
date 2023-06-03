@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import javax.print.attribute.standard.DateTimeAtCompleted;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,12 +29,21 @@ import jss.devices.bus.ControlBusUnknownSignalException;
 import jss.devices.bus.DataBus;
 import jss.devices.bus.GenericConnectionBus;
 import jss.devices.bus.impl.ControlBusBasic;
+import jss.devices.bus.impl.DataBusBits;
 import jss.devices.bus.impl.DataBusNoError;
 import jss.devices.cpu.CPUInvalidOpcodeException;
 import jss.devices.cpu.impl.Intel4004;
 import jss.devices.cpu.impl.Intel4040;
 import jss.devices.cpu.impl.Intel8008;
 import jss.devices.cpu.impl.Intel8080;
+import jss.devices.cpu.impl.Intel8088;
+import jss.devices.display.GenericDisplayDevice;
+import jss.devices.display.impl.IBM5151;
+import jss.devices.displayadapter.GenericDisplayAdapter;
+import jss.devices.displayadapter.impl.MDA;
+import jss.devices.impl.DMAController;
+import jss.devices.impl.PIT;
+import jss.devices.impl.Switch;
 import jss.devices.memory.MemoryAccessException;
 import jss.devices.memory.PROMController;
 import jss.devices.memory.PROMDevice;
@@ -106,8 +117,8 @@ public class Simulation extends Thread {
 		return Paths.get(baseFolder, name);
 	}
 	
-	public static GenericDevice createDevice(String type, JSONArray jconfig, Simulation sim) throws DeviceConfigurationException, ConfigurationValueTypeException, ConfigurationValueOptionException, IOException {
-		DeviceConfiguration config=new DeviceConfiguration();
+	public static GenericDevice createDevice(String type, String name, JSONArray jconfig, Simulation sim) throws DeviceConfigurationException, ConfigurationValueTypeException, ConfigurationValueOptionException, IOException {
+		DeviceConfiguration config=new DeviceConfiguration(name,type);
 		if(jconfig!=null) {
 			for(int i=0;i<jconfig.length();i++) {
 				JSONObject c=jconfig.getJSONObject(i);
@@ -129,6 +140,7 @@ public class Simulation extends Thread {
 		else if(type.contentEquals("Intel4004")) dev=new Intel4004();
 		else if(type.contentEquals("Intel8008")) dev=new Intel8008();
 		else if(type.contentEquals("Intel8080")) dev=new Intel8080();
+		else if(type.contentEquals("Intel8088")) dev=new Intel8088();
 		else if(type.contentEquals("ControlBusBasic")) dev=new ControlBusBasic();
 		else if(type.contentEquals("DataBusNoError")) dev=new DataBusNoError();
 		else if(type.contentEquals("MemoryW4D4")) dev=new MemoryW4D4();
@@ -158,6 +170,12 @@ public class Simulation extends Thread {
 		else if(type.contentEquals("IntellecIMM8_90")) dev=new IntellecIMM8_90();
 		else if(type.contentEquals("TelnetTerminal")) dev=new TelnetTerminal();
 		else if(type.contentEquals("SimulationControl")) dev=new SimulationControl();
+		else if(type.contentEquals("MDA")) dev=new MDA();
+		else if(type.contentEquals("IBM5151")) dev=new IBM5151();
+		else if(type.contentEquals("PIT")) dev=new PIT();
+		else if(type.contentEquals("DMAController")) dev=new DMAController();
+		else if(type.contentEquals("Switch")) dev=new Switch();
+		else if(type.contentEquals("DataBusBits")) dev=new DataBusBits();
 		
 		dev.configure(config, sim);
 		dev.initialize();
@@ -179,7 +197,7 @@ public class Simulation extends Thread {
 		JSONArray devices=json.getJSONArray("devices");
 		for(int i=0;i<devices.length();i++) {
 			JSONObject dev=devices.getJSONObject(i);
-			GenericDevice gdev=createDevice(dev.getString("type"),dev.optJSONArray("configuration"), sim);
+			GenericDevice gdev=createDevice(dev.getString("type"),dev.getString("name"), dev.optJSONArray("configuration"), sim);
 			sim.devices.put(dev.getString("name"),gdev);
 			if(gdev instanceof GenericExecutionDevice)
 				sim.executionDevices.add((GenericExecutionDevice)gdev);
@@ -214,6 +232,10 @@ public class Simulation extends Thread {
 				PROMDevice src=(PROMDevice)sim.devices.get(c.getString("src"));
 				PROMController dev=(PROMController)sim.devices.get(c.getString("dev"));
 				src.attachPROMController(dev);
+			}else if(type.contentEquals("attachDisplayDevice")) {
+				GenericDisplayAdapter src=(GenericDisplayAdapter)sim.devices.get(c.getString("src"));
+				GenericDisplayDevice dev=(GenericDisplayDevice)sim.devices.get(c.getString("dev"));
+				src.attachDisplayDevice(dev);
 			}
 		}
 		
@@ -224,14 +246,15 @@ public class Simulation extends Thread {
 		return name;
 	}
 	
-	private void writeToCurrentLog(String s) {
+	public void writeToCurrentLog(String s) {
+		System.out.println(s);
 		synchronized(lock) {
-			LocalDateTime now=LocalDateTime.now();
-			lastLogTS=
-					(((((now.getYear()*100+now.getMonthValue())*100+now.getDayOfMonth())*100+
-					now.getHour())*100+now.getMinute())*100+now.getSecond())*1000+
-					(now.getNano()%1000);
-			simulationCurrentLog.append(s);
+			//LocalDateTime now=LocalDateTime.now();
+			lastLogTS=System.currentTimeMillis();
+					/*((((((now.getYear()%100)*100+now.getMonthValue())*100+now.getDayOfMonth())*100+
+					now.getHour())*100+now.getMinute())*100+now.getSecond());//*1000+
+					//(now.getNano()%1000);*/
+			simulationCurrentLog.append(s);//String.format("%d-%d-%d %d:%d:%d %s",now.getYear(),now.getMonthValue(),now.getDayOfMonth(),now.getHour(),now.getMinute(),now.getSecond(),s));
 			simulationCurrentLog.append("\n");
 		}
 	}
