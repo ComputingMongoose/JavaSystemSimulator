@@ -2,24 +2,15 @@ package jss.devices.cpu.impl;
 
 import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
-import jss.configuration.DeviceConfiguration;
 import jss.configuration.DeviceConfigurationException;
-import jss.devices.GenericControlDevice;
-import jss.devices.GenericDataAccessDevice;
-import jss.devices.bus.ControlBus;
 import jss.devices.bus.ControlBusUnknownSignalException;
-import jss.devices.bus.DataBus;
-import jss.devices.cpu.CPUDevice;
+import jss.devices.cpu.AbstractCPUDevice;
 import jss.devices.cpu.CPUInvalidOpcodeException;
+import jss.devices.cpu.CPUState;
 import jss.devices.memory.MemoryAccessException;
-import jss.simulation.Simulation;
 
-public class Intel4040 implements CPUDevice, GenericControlDevice, GenericDataAccessDevice {
+public class Intel4040 extends AbstractCPUDevice {
 
-	private DataBus memoryBus=null;
-	private DataBus ioBus=null;
-	private ControlBus controlBus=null;
-	
 	// address
 	//    4-bit MODE | 3-bit RAM | 1-bit ROM | 12-bit address => total 20-bit
 	//    MODE: 0x8=DATA | 0x4=PROM | 0x2=RAM | 0x1=ROM
@@ -116,7 +107,51 @@ public class Intel4040 implements CPUDevice, GenericControlDevice, GenericDataAc
 			1, 2, 4, 6, 8, 10, 12, 14
 	};
 	
+	CPUState cpuState=new CPUState();
+	
+	public CPUState getCPUState() {
+		cpuState.setRegister("PC", 12 , pc);
+		cpuState.setRegister("PC1", 12 , pc_stack[0]);
+		cpuState.setRegister("PC2", 12 , pc_stack[1]);
+		cpuState.setRegister("PC3", 12 , pc_stack[2]);
+		cpuState.setRegister("PC4", 12 , pc_stack[3]);
+		cpuState.setRegister("PC5", 12 , pc_stack[4]);
+		cpuState.setRegister("PC6", 12 , pc_stack[5]);
+		cpuState.setRegister("PC7", 12 , pc_stack[6]);
+		cpuState.setRegister("PCPTR", 4 , pc_stack_ptr);
+		cpuState.setRegister("R00", 4 , registers[0][0]);
+		cpuState.setRegister("R01", 4 , registers[0][1]);
+		cpuState.setRegister("R02", 4 , registers[0][2]);
+		cpuState.setRegister("R03", 4 , registers[0][3]);
+		cpuState.setRegister("R04", 4 , registers[0][4]);
+		cpuState.setRegister("R05", 4 , registers[0][5]);
+		cpuState.setRegister("R06", 4 , registers[0][6]);
+		cpuState.setRegister("R07", 4 , registers[0][7]);
+		cpuState.setRegister("R08", 4 , registers[0][8]);
+		cpuState.setRegister("R09", 4 , registers[0][9]);
+		cpuState.setRegister("R0A", 4 , registers[0][10]);
+		cpuState.setRegister("R0B", 4 , registers[0][11]);
+		cpuState.setRegister("R0C", 4 , registers[0][12]);
+		cpuState.setRegister("R0D", 4 , registers[0][13]);
+		cpuState.setRegister("R0E", 4 , registers[0][14]);
+		cpuState.setRegister("R0F", 4 , registers[0][15]);
+		cpuState.setRegister("R10", 4 , registers[1][0]);
+		cpuState.setRegister("R11", 4 , registers[1][1]);
+		cpuState.setRegister("R12", 4 , registers[1][2]);
+		cpuState.setRegister("R13", 4 , registers[1][3]);
+		cpuState.setRegister("R14", 4 , registers[1][4]);
+		cpuState.setRegister("R15", 4 , registers[1][5]);
+		cpuState.setRegister("R16", 4 , registers[1][6]);
+		cpuState.setRegister("R17", 4 , registers[1][7]);
+		cpuState.setRegister("RBANK", 4 , r_bank);
+		cpuState.setRegister("ACC", 4 , acc);
+		return cpuState;
+	}
+	
+	
 	public Intel4040() {
+		super();
+		
 		pc_stack=new long[7];
 		registers=new long[2][]; // banks
 		registers[0]=new long[16];
@@ -124,13 +159,10 @@ public class Intel4040 implements CPUDevice, GenericControlDevice, GenericDataAc
 	}
 	
 	@Override
-	public void configure(DeviceConfiguration config, Simulation sim)
-			throws DeviceConfigurationException, ConfigurationValueTypeException {
-	}
-
-	@Override
 	public void initialize()
 			throws DeviceConfigurationException, ConfigurationValueTypeException, ConfigurationValueOptionException {
+		super.initialize();
+		
 		pc_stack_ptr=0;
 		for(int i=0;i<pc_stack.length;i++)pc_stack[i]=0;
 		acc=0;
@@ -157,17 +189,6 @@ public class Intel4040 implements CPUDevice, GenericControlDevice, GenericDataAc
 		reg_src_valid=0;
 		x2=0;
 		x3=0;
-	}
-
-	@Override
-	public void attachToDataBus(DataBus bus) {
-		if(memoryBus==null)memoryBus=bus;
-		else if(ioBus==null)ioBus=bus;
-	}
-
-	@Override
-	public void attachToControlBus(ControlBus bus) {
-		controlBus=bus;
 	}
 
 	public long getPc() {
@@ -255,7 +276,7 @@ public class Intel4040 implements CPUDevice, GenericControlDevice, GenericDataAc
 	}
 
 	@Override
-	public void step() throws MemoryAccessException, ControlBusUnknownSignalException, CPUInvalidOpcodeException {
+	public void stepImpl() throws MemoryAccessException, ControlBusUnknownSignalException, CPUInvalidOpcodeException {
 		
 		if(controlBus.isSignalSet("STOP")) {
 			controlBus.setSignal("STOPA");
@@ -762,5 +783,10 @@ public class Intel4040 implements CPUDevice, GenericControlDevice, GenericDataAc
 	public long getX3() {
 		return x3;
 	}
-
+	
+	@Override
+	public long getCurrentAddress() {
+		return mode|pc;
+	}
+	
 }

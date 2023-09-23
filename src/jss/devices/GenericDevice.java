@@ -10,7 +10,7 @@ import jss.simulation.Simulation;
 
 public interface GenericDevice {
 
-	public void configure(DeviceConfiguration config, Simulation sim) throws DeviceConfigurationException, ConfigurationValueTypeException, IOException;
+	public void configure(DeviceConfiguration config, Simulation sim) throws DeviceConfigurationException, ConfigurationValueTypeException, IOException, ConfigurationValueOptionException;
 	public void initialize() throws DeviceConfigurationException, ConfigurationValueTypeException, ConfigurationValueOptionException, IOException;
 	
 }

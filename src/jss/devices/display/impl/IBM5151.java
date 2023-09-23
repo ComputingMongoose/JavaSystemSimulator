@@ -1,6 +1,5 @@
 package jss.devices.display.impl;
 
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -19,7 +18,6 @@ import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
 import jss.configuration.DeviceConfiguration;
 import jss.configuration.DeviceConfigurationException;
-import jss.devices.cpu.impl.Intel4040;
 import jss.devices.display.GenericDisplayDevice;
 import jss.simulation.Simulation;
 

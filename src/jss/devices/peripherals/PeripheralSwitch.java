@@ -3,11 +3,11 @@ package jss.devices.peripherals;
 import java.awt.image.BufferedImage;
 
 public class PeripheralSwitch {
-	int x,y,w,h;
-	boolean on;
-	BufferedImage swOn,swOff;
+	public int x,y,w,h;
+	public boolean on;
+	public BufferedImage swOn,swOff;
 	
-	PeripheralSwitch(int x, int y, int w, int h, boolean on, BufferedImage swOn, BufferedImage swOff){
+	public PeripheralSwitch(int x, int y, int w, int h, boolean on, BufferedImage swOn, BufferedImage swOff){
 		this.x=x;
 		this.y=y;
 		this.w=w;

@@ -51,7 +51,7 @@ public class TestIntel4040 {
 		DataBus memoryBus=new DataBusNoError();
 		memoryBus.configure(configMemoryBus,null);
 		memoryBus.initialize();
-		memoryBus.attachDataDevice(rom, 0, 32, 0);
+		memoryBus.attachDataDevice(rom, 0, 32, 0,"",true);
 		
 		// Control BUS
 		DeviceConfiguration configControlBus = new DeviceConfiguration("","");

@@ -29,8 +29,8 @@ public class TestDataBusNoError {
 		bus.configure(new DeviceConfiguration("",""),null);
 		bus.initialize();
 		
-		bus.attachDataDevice(mem, 0, 15, 0);
-		bus.attachDataDevice(mem, 100, 115, 100);
+		bus.attachDataDevice(mem, 0, 15, 0,"",true);
+		bus.attachDataDevice(mem, 100, 115, 100,"",true);
 		
 		check(bus.read(0),0);
 		check(bus.read(50),0);

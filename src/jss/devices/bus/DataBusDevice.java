@@ -8,19 +8,29 @@ public class DataBusDevice {
 	long start;
 	long end;
 	long offset;
+	String name;
+	boolean enabled;
 	
 	GenericDataDevice device;
 	
-	public DataBusDevice(GenericDataDevice device, long start, long end, long offset) {
+	public DataBusDevice(GenericDataDevice device, long start, long end, long offset, String name, boolean enabled) {
 		this.device=device;
 		this.start=start;
 		this.end=end;
 		this.offset=offset;
+		this.name=name;
+		this.enabled=enabled;
 	}
 	
 	public boolean isValidAddress(long address) {
-		return address>=start && address<=end;
+		return enabled && address>=start && address<=end;
 	}
+	
+	public boolean isEnabled() {return enabled;}
+	
+	public void setEnabled(boolean en) {enabled=en;}
+	
+	public String getName() {return name;}
 	
 	public long getMappedAddress(long address) {
 		return address-offset;

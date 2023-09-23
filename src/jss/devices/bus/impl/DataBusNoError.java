@@ -22,9 +22,11 @@ public class DataBusNoError implements DataBus {
 	Simulation sim;
 	DeviceConfiguration config;
 	boolean bLogMisses;
+	HashMap<Long,Boolean> suspendOnAccess;
 	
 	public DataBusNoError() {
 		devices=new ArrayList<>(100);
+		suspendOnAccess=null;
 	}
 	
 	@Override
@@ -33,7 +35,14 @@ public class DataBusNoError implements DataBus {
 		this.sim=sim;
 		this.config=config;
 		bLogMisses=config.getOptLong("log_misses", 0)!=0;
-		
+		String suspendOnAccessString=config.getOptString("suspend_on_access", "");
+		if(suspendOnAccessString.length()>0) {
+			String data[]=suspendOnAccessString.split("[,]");
+			suspendOnAccess=new HashMap<>(data.length);
+			for(String d:data) {
+				suspendOnAccess.put(Long.parseLong(d, 16), Boolean.TRUE);
+			}
+		}
 	}
 
 	@Override
@@ -42,8 +51,8 @@ public class DataBusNoError implements DataBus {
 	}
 
 	@Override
-	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset) {
-		devices.add(new DataBusDevice(device,start,end,offset));
+	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset, String name, boolean enabled) {
+		devices.add(new DataBusDevice(device,start,end,offset,name,enabled));
 	}
 
 	@Override
@@ -62,6 +71,14 @@ public class DataBusNoError implements DataBus {
 		if(bLogMisses && !found) {
 			sim.writeToCurrentLog(String.format("BUS [%s] READ MISS [%x]", this.config.getName(), address));
 		}
+		
+		if(suspendOnAccess!=null) {
+			if(suspendOnAccess.containsKey(address)) {
+				sim.setSuspended(true);
+				sim.writeToCurrentLog(String.format("BUS [%s] READ Suspend on access [%x]", this.config.getName(), address));
+			}
+		}
+		
 		return last_data;
 	}
 
@@ -82,6 +99,12 @@ public class DataBusNoError implements DataBus {
 			sim.writeToCurrentLog(String.format("BUS [%s] WRITE MISS [%x] [%x]", this.config.getName(), address,value));
 		}
 
+		if(suspendOnAccess!=null) {
+			if(suspendOnAccess.containsKey(address)) {
+				sim.setSuspended(true);
+				sim.writeToCurrentLog(String.format("BUS [%s] WRITE Suspend on access [%x]", this.config.getName(), address));
+			}
+		}
 	}
 
 	public long getLast_address() {
@@ -90,6 +113,14 @@ public class DataBusNoError implements DataBus {
 
 	public long getLast_data() {
 		return last_data;
+	}
+
+	@Override
+	public DataBusDevice getDeviceByConnectionName(String name) {
+		for(DataBusDevice d:this.devices) {
+			if(d.getName().contentEquals(name))return d;
+		}
+		return null;
 	}
 
 

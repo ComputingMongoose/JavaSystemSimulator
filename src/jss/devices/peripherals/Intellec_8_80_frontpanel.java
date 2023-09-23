@@ -282,7 +282,7 @@ public class Intellec_8_80_frontpanel implements GenericControlDevice, GenericEx
 	@SuppressWarnings("serial")
 	class FrontWindow extends JFrame{
 		public FrontWindow() {
-			super("Intellec 4/40 FrontPanel");
+			super("Intellec 8/80 FrontPanel");
 			setSize(1800,763);
 			setDefaultCloseOperation(EXIT_ON_CLOSE);
 			Cursor cur = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
@@ -507,7 +507,9 @@ public class Intellec_8_80_frontpanel implements GenericControlDevice, GenericEx
 				}
 				
 				controlBus.setSignal("INT");
-				controlBus.setSignalData("INT", new byte[] {0x05});
+				//controlBus.setSignalData("INT", new byte[] {0x05});
+				controlBus.setSignalData("INT", new byte[] {(byte)0xC3,0x00,0x38}); // JMP 3800
+
 				flag_clear_int=true;
 				this.flag_intreq=true;
 			}

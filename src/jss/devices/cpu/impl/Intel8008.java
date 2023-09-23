@@ -4,22 +4,15 @@ import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
 import jss.configuration.DeviceConfiguration;
 import jss.configuration.DeviceConfigurationException;
-import jss.devices.GenericControlDevice;
-import jss.devices.GenericDataAccessDevice;
-import jss.devices.bus.ControlBus;
 import jss.devices.bus.ControlBusUnknownSignalException;
-import jss.devices.bus.DataBus;
-import jss.devices.cpu.CPUDevice;
+import jss.devices.cpu.AbstractCPUDevice;
 import jss.devices.cpu.CPUInvalidOpcodeException;
+import jss.devices.cpu.CPUState;
 import jss.devices.memory.MemoryAccessException;
 import jss.simulation.Simulation;
 
-public class Intel8008 implements CPUDevice, GenericControlDevice, GenericDataAccessDevice {
+public class Intel8008 extends AbstractCPUDevice {
 
-	private DataBus memoryBus=null;
-	private DataBus ioBus=null;
-	private ControlBus controlBus=null;
-	
 	// address 14-bit, for 16K memory
 
 	// Control flags: INT, S0, S1, S2
@@ -51,7 +44,32 @@ public class Intel8008 implements CPUDevice, GenericControlDevice, GenericDataAc
 	
 	int []parity_map;
 	
+	CPUState cpuState=new CPUState();
+	
+	public CPUState getCPUState() {
+		cpuState.setRegister("PC0", 14 , stack[0]);
+		cpuState.setRegister("PC1", 14 , stack[1]);
+		cpuState.setRegister("PC2", 14 , stack[2]);
+		cpuState.setRegister("PC3", 14 , stack[3]);
+		cpuState.setRegister("PC4", 14 , stack[4]);
+		cpuState.setRegister("PC5", 14 , stack[5]);
+		cpuState.setRegister("PC6", 14 , stack[6]);
+		cpuState.setRegister("PC7", 14 , stack[7]);
+		cpuState.setRegister("PCPTR", 4 , stack_ptr);
+		cpuState.setRegister("A", 8 , regs[REG_A]);
+		cpuState.setRegister("B", 8 , regs[REG_B]);
+		cpuState.setRegister("C", 8 , regs[REG_C]);
+		cpuState.setRegister("D", 8 , regs[REG_D]);
+		cpuState.setRegister("E", 8 , regs[REG_E]);
+		cpuState.setRegister("H", 8 , regs[REG_H]);
+		cpuState.setRegister("L", 8 , regs[REG_L]);
+		return cpuState;
+	}
+	
+	
 	public Intel8008() {
+		super();
+		
 		stack=new int[8];
 		regs=new int[7];
 		parity_map=new int[256];
@@ -60,6 +78,8 @@ public class Intel8008 implements CPUDevice, GenericControlDevice, GenericDataAc
 	@Override
 	public void configure(DeviceConfiguration config, Simulation sim)
 			throws DeviceConfigurationException, ConfigurationValueTypeException {
+        super.configure(config,sim);
+		
 		for(int i=0;i<256;i++) {
 			parity_map[i]=
 				((   (i&0x1)+
@@ -77,6 +97,8 @@ public class Intel8008 implements CPUDevice, GenericControlDevice, GenericDataAc
 	@Override
 	public void initialize()
 			throws DeviceConfigurationException, ConfigurationValueTypeException, ConfigurationValueOptionException {
+		super.initialize();
+		
 		stack_ptr=0;
 		for(int i=0;i<stack.length;i++)stack[i]=0;
 		for(int i=0;i<regs.length;i++)regs[i]=0;
@@ -89,20 +111,9 @@ public class Intel8008 implements CPUDevice, GenericControlDevice, GenericDataAc
 		instr=0;
 	}
 
-	@Override
-	public void attachToDataBus(DataBus bus) {
-		if(memoryBus==null)memoryBus=bus;
-		else if(ioBus==null)ioBus=bus;
-	}
 
 	@Override
-	public void attachToControlBus(ControlBus bus) {
-		controlBus=bus;
-	}
-
-
-	@Override
-	public void step() throws MemoryAccessException, ControlBusUnknownSignalException, CPUInvalidOpcodeException {
+	public void stepImpl() throws MemoryAccessException, ControlBusUnknownSignalException, CPUInvalidOpcodeException {
 		
 		byte[] int_instr=null;
 		
@@ -541,4 +552,8 @@ public class Intel8008 implements CPUDevice, GenericControlDevice, GenericDataAc
 		return instr;
 	}
 
+	@Override
+	public long getCurrentAddress() {
+		return this.stack[stack_ptr];
+	}
 }

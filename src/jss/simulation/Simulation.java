@@ -4,11 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-
-import javax.print.attribute.standard.DateTimeAtCompleted;
+import java.util.List;
+import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,6 +23,7 @@ import jss.devices.GenericDataAccessDevice;
 import jss.devices.GenericDataDevice;
 import jss.devices.GenericDevice;
 import jss.devices.GenericExecutionDevice;
+import jss.devices.GenericMultiDevice;
 import jss.devices.bus.ControlBus;
 import jss.devices.bus.ControlBusUnknownSignalException;
 import jss.devices.bus.DataBus;
@@ -31,17 +31,23 @@ import jss.devices.bus.GenericConnectionBus;
 import jss.devices.bus.impl.ControlBusBasic;
 import jss.devices.bus.impl.DataBusBits;
 import jss.devices.bus.impl.DataBusNoError;
+import jss.devices.cpu.CPUDevice;
 import jss.devices.cpu.CPUInvalidOpcodeException;
+import jss.devices.cpu.Disassembler;
 import jss.devices.cpu.impl.Intel4004;
 import jss.devices.cpu.impl.Intel4040;
 import jss.devices.cpu.impl.Intel8008;
 import jss.devices.cpu.impl.Intel8080;
+import jss.devices.cpu.impl.Intel8080Disassembler;
 import jss.devices.cpu.impl.Intel8088;
 import jss.devices.display.GenericDisplayDevice;
 import jss.devices.display.impl.IBM5151;
 import jss.devices.displayadapter.GenericDisplayAdapter;
 import jss.devices.displayadapter.impl.MDA;
 import jss.devices.impl.DMAController;
+import jss.devices.impl.Intellec2ControlPort;
+import jss.devices.impl.Intellec2IOC;
+import jss.devices.impl.PIC_8259A;
 import jss.devices.impl.PIT;
 import jss.devices.impl.Switch;
 import jss.devices.memory.MemoryAccessException;
@@ -65,15 +71,23 @@ import jss.devices.memory.impl.ROMW8D64;
 import jss.devices.memory.impl.ROMW8D8;
 import jss.devices.peripherals.ADM3ATerminal;
 import jss.devices.peripherals.ASR33Teletype;
+import jss.devices.peripherals.GenericTerminal;
+import jss.devices.peripherals.HeathkitH19Terminal;
 import jss.devices.peripherals.IntellecIMM8_90;
 import jss.devices.peripherals.Intellec_4_40_frontpanel;
 import jss.devices.peripherals.Intellec_4_frontpanel;
 import jss.devices.peripherals.Intellec_8_80_frontpanel;
 import jss.devices.peripherals.Intellec_8_frontpanel;
 import jss.devices.peripherals.LEDs4;
+import jss.devices.peripherals.MDS230_frontpanel;
 import jss.devices.peripherals.SimulationControl;
 import jss.devices.peripherals.Switches4;
 import jss.devices.peripherals.TelnetTerminal;
+import jss.disk.Disk;
+import jss.disk.DiskController;
+import jss.disk.DiskDrive;
+import jss.disk.impl.FloppyDiskController;
+import jss.disk.impl.MDS230_x2_floppydrives;
 
 public class Simulation extends Thread {
 
@@ -95,6 +109,8 @@ public class Simulation extends Thread {
 	private long delayBetweenSteps_ns;
 	long lastLogTS;
 	
+	private String onCPUInvalidOpcodeException;
+	
 	private ArrayList<GenericExecutionDevice> skipClock;
 	
 	private Simulation() {
@@ -109,6 +125,7 @@ public class Simulation extends Thread {
 		delayBetweenSteps_ms=10;
 		delayBetweenSteps_ns=0;
 		skipClock=new ArrayList<>(50);
+		this.onCPUInvalidOpcodeException="CONTINUE";
 	}
 	
 	public void setSkipClock(GenericExecutionDevice o) {skipClock.add(o);}
@@ -167,6 +184,8 @@ public class Simulation extends Thread {
 		else if(type.contentEquals("LEDs4")) dev=new LEDs4();
 		else if(type.contentEquals("ASR33Teletype")) dev=new ASR33Teletype();
 		else if(type.contentEquals("ADM3ATerminal")) dev=new ADM3ATerminal();
+		else if(type.contentEquals("HeathkitH19Terminal")) dev=new HeathkitH19Terminal();
+		else if(type.contentEquals("GenericTerminal")) dev=new GenericTerminal();
 		else if(type.contentEquals("IntellecIMM8_90")) dev=new IntellecIMM8_90();
 		else if(type.contentEquals("TelnetTerminal")) dev=new TelnetTerminal();
 		else if(type.contentEquals("SimulationControl")) dev=new SimulationControl();
@@ -176,6 +195,12 @@ public class Simulation extends Thread {
 		else if(type.contentEquals("DMAController")) dev=new DMAController();
 		else if(type.contentEquals("Switch")) dev=new Switch();
 		else if(type.contentEquals("DataBusBits")) dev=new DataBusBits();
+		else if(type.contentEquals("MDS230_frontpanel")) dev=new MDS230_frontpanel();
+		else if(type.contentEquals("FloppyDiskController")) dev=new FloppyDiskController();
+		else if(type.contentEquals("8259A")) dev=new PIC_8259A();
+		else if(type.contentEquals("MDS230_x2_FloppyDrives")) dev=new MDS230_x2_floppydrives();
+		else if(type.contentEquals("Intellec2ControlPort")) dev=new Intellec2ControlPort();
+		else if(type.contentEquals("Intellec2IOC")) dev=new Intellec2IOC();
 		
 		dev.configure(config, sim);
 		dev.initialize();
@@ -193,6 +218,7 @@ public class Simulation extends Thread {
 		sim.maxSteps=json.optLong("maximum_steps", 0);
 		sim.delayBetweenSteps_ms=json.optLong("delay_between_steps_ms",10);
 		sim.delayBetweenSteps_ns=json.optLong("delay_between_steps_ns",0);
+		sim.onCPUInvalidOpcodeException=json.optString("onCPUInvalidOpcodeException", "CONTINUE").toUpperCase();
 		
 		JSONArray devices=json.getJSONArray("devices");
 		for(int i=0;i<devices.length();i++) {
@@ -207,35 +233,46 @@ public class Simulation extends Thread {
 		for(int i=0;i<connections.length();i++) {
 			JSONObject c=connections.getJSONObject(i);
 			
+			GenericDevice device=null;
+			String devStr=c.getString("dev");
+			if(devStr.lastIndexOf(':')>0) {
+				int devid=Integer.parseInt(devStr.substring(devStr.lastIndexOf(':')+1));
+				devStr=devStr.substring(0,devStr.lastIndexOf(':'));
+				device=((GenericMultiDevice)sim.devices.get(devStr)).getDevice(devid);
+			}else device=sim.devices.get(c.getString("dev"));
+			
 			String type=c.getString("type");
 			if(type.contentEquals("attachDataDevice")) {
 				DataBus src=(DataBus)sim.devices.get(c.getString("src"));
-				GenericDataDevice dev=(GenericDataDevice)sim.devices.get(c.getString("dev"));
-				src.attachDataDevice(dev, c.getLong("start"), c.getLong("end"), c.getLong("offset"));
+				GenericDataDevice dev=(GenericDataDevice)device;
+				src.attachDataDevice(dev, c.getLong("start"), c.getLong("end"), c.getLong("offset"), c.optString("name", ""),c.optBoolean("enabled", true));
 			}else if(type.contentEquals("attachToDataBus")) {
 				GenericDataAccessDevice src=(GenericDataAccessDevice)sim.devices.get(c.getString("src"));
-				DataBus dev=(DataBus)sim.devices.get(c.getString("dev"));
+				DataBus dev=(DataBus)device;
 				src.attachToDataBus(dev);
 			}else if(type.contentEquals("attachToControlBus")) {
 				GenericControlDevice src=(GenericControlDevice)sim.devices.get(c.getString("src"));
-				ControlBus dev=(ControlBus)sim.devices.get(c.getString("dev"));
+				ControlBus dev=(ControlBus)device;
 				src.attachToControlBus(dev);
 			}else if(type.contentEquals("attachGenericDevice")) {
 				GenericConnectionBus src=(GenericConnectionBus)sim.devices.get(c.getString("src"));
-				GenericDevice dev=sim.devices.get(c.getString("dev"));
-				src.attachGenericDevice(dev);
+				src.attachGenericDevice(device);
 			}else if(type.contentEquals("attachPROM")) {
 				PROMController src=(PROMController)sim.devices.get(c.getString("src"));
-				PROMDevice dev=(PROMDevice)sim.devices.get(c.getString("dev"));
+				PROMDevice dev=(PROMDevice)device;
 				src.attachPROM(dev);
 			}else if(type.contentEquals("attachPROMController")) {
 				PROMDevice src=(PROMDevice)sim.devices.get(c.getString("src"));
-				PROMController dev=(PROMController)sim.devices.get(c.getString("dev"));
+				PROMController dev=(PROMController)device;
 				src.attachPROMController(dev);
 			}else if(type.contentEquals("attachDisplayDevice")) {
 				GenericDisplayAdapter src=(GenericDisplayAdapter)sim.devices.get(c.getString("src"));
-				GenericDisplayDevice dev=(GenericDisplayDevice)sim.devices.get(c.getString("dev"));
+				GenericDisplayDevice dev=(GenericDisplayDevice)device;
 				src.attachDisplayDevice(dev);
+			}else if(type.contentEquals("attachDiskDrive")) {
+				DiskController src=(DiskController)sim.devices.get(c.getString("src"));
+				DiskDrive dev=(DiskDrive)device;
+				src.attachDiskDrive(dev);
 			}
 		}
 		
@@ -277,6 +314,11 @@ public class Simulation extends Thread {
 		synchronized(lock) {manual_step=true;}
 	}
 
+	public boolean getManualStep() {
+		boolean ret=false;
+		synchronized(lock) {ret=manual_step;}
+		return ret;
+	}
 	
 	@Override
 	public void run() {
@@ -307,6 +349,10 @@ public class Simulation extends Thread {
 						} catch (CPUInvalidOpcodeException e3) {
 							writeToCurrentLog("CPUInvalidOpcodeException "+e3.getOpcode());
 							e3.printStackTrace();
+							
+							if(this.onCPUInvalidOpcodeException.contentEquals("SUSPEND")) {
+								this.setSuspended(true);
+							}
 						}
 					}
 				}
@@ -358,5 +404,52 @@ public class Simulation extends Thread {
 
 	public long getLastLogTS() {
 		synchronized(lock) { return lastLogTS; }
+	}
+	
+	public List<String> getDevicesByType(String type){
+		ArrayList<String> ret=new ArrayList<>(100);
+		
+		for(Map.Entry<String,GenericDevice> entry:devices.entrySet()) {		
+			if(type.contentEquals("GenericDataDevice")) {
+				if(entry.getValue() instanceof GenericDataDevice) {
+					ret.add(entry.getKey());
+				}
+				
+			}else if(type.contentEquals("GenericExecutionDevice")) {
+				if(entry.getValue() instanceof GenericExecutionDevice) {
+					ret.add(entry.getKey());
+				}
+			}else if(type.contentEquals("CPUDevice")) {
+				if(entry.getValue() instanceof CPUDevice) {
+					ret.add(entry.getKey());
+				}
+			}else if(type.contentEquals("Disk")) {
+				if(entry.getValue() instanceof Disk) {
+					ret.add(entry.getKey());
+				}
+			}else if(type.contentEquals("DiskController")) {
+				if(entry.getValue() instanceof DiskController) {
+					ret.add(entry.getKey());
+				}
+			}else if(type.contentEquals("DiskDrive")) {
+				if(entry.getValue() instanceof DiskDrive) {
+					ret.add(entry.getKey());
+				}
+				
+			}
+		}
+		
+		return ret;
+	}
+	
+	public GenericDevice getDevice(String name) {
+		return devices.get(name);
+	}
+	
+	public Disassembler getDisassembler(CPUDevice d) {
+		if(d instanceof Intel8080) {
+			return new Intel8080Disassembler();
+		}
+		return null;
 	}
 }

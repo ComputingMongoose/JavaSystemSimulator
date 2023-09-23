@@ -1,9 +1,6 @@
 package jss.devices.displayadapter.impl;
 
-import java.awt.AlphaComposite;
-import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
@@ -16,6 +13,7 @@ import jss.configuration.DeviceConfigurationException;
 import jss.devices.GenericDataDevice;
 import jss.devices.GenericExecutionDevice;
 import jss.devices.bus.ControlBusUnknownSignalException;
+import jss.devices.bus.DataBusDevice;
 import jss.devices.cpu.CPUInvalidOpcodeException;
 import jss.devices.display.GenericDisplayDevice;
 import jss.devices.displayadapter.GenericDisplayAdapter;
@@ -113,7 +111,7 @@ public class MDA implements GenericDisplayAdapter, GenericExecutionDevice {
 	}
 
 	@Override
-	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset) {
+	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset,String name,boolean enabled) {
 		videoRam=device;
 		videoRamStart=start;
 		videoRamEnd=end;
@@ -130,6 +128,12 @@ public class MDA implements GenericDisplayAdapter, GenericExecutionDevice {
 		synchronized(lock) {
 			this.wasStep=true;
 		}
+	}
+
+	@Override
+	public DataBusDevice getDeviceByConnectionName(String name) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

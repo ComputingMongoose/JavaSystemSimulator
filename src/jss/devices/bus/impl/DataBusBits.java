@@ -1,8 +1,6 @@
 package jss.devices.bus.impl;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-
 import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
 import jss.configuration.DeviceConfiguration;
@@ -40,8 +38,8 @@ public class DataBusBits implements DataBus {
 	}
 
 	@Override
-	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset) {
-		devices.add(new DataBusDevice(device,start,end,offset));
+	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset, String name, boolean enabled) {
+		devices.add(new DataBusDevice(device,start,end,offset,name,enabled));
 	}
 
 	@Override
@@ -88,6 +86,14 @@ public class DataBusBits implements DataBus {
 
 	public long getLast_data() {
 		return last_data;
+	}
+
+	@Override
+	public DataBusDevice getDeviceByConnectionName(String name) {
+		for(DataBusDevice d:this.devices) {
+			if(d.getName().contentEquals(name))return d;
+		}
+		return null;
 	}
 
 

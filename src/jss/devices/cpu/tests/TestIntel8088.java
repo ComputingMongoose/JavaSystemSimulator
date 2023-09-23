@@ -235,8 +235,8 @@ public class TestIntel8088 {
 		DataBus memoryBus=new DataBusNoError();
 		memoryBus.configure(configMemoryBus,null);
 		memoryBus.initialize();
-		memoryBus.attachDataDevice(rom, 0xF0000, 0xFFFFF, 0xF0000); // last 64k
-		memoryBus.attachDataDevice(mem, 0, mem.getMem().length, 0);
+		memoryBus.attachDataDevice(rom, 0xF0000, 0xFFFFF, 0xF0000,"",true); // last 64k
+		memoryBus.attachDataDevice(mem, 0, mem.getMem().length, 0,"",true);
 		
 		// Control BUS
 		DeviceConfiguration configControlBus = new DeviceConfiguration("","");
@@ -319,10 +319,10 @@ public class TestIntel8088 {
 		DataBus memoryBus=new DataBusNoError();
 		memoryBus.configure(configMemoryBus,null);
 		memoryBus.initialize();
-		memoryBus.attachDataDevice(rom, 0xFFFF0, 0xFFFF0+10, 0xFFFF0);
-		memoryBus.attachDataDevice(mem, 0, 4096, 0);
-		memoryBus.attachDataDevice(memVideo, 0xB0000,  0xB0000+4096, 0xB0000); // B000:0 MDA Display RAM
-		memoryBus.attachDataDevice(memVideo, 0xB8000,  0xB8000+4096, 0xB8000); // B800:0 CGA Display RAM
+		memoryBus.attachDataDevice(rom, 0xFFFF0, 0xFFFF0+10, 0xFFFF0,"",true);
+		memoryBus.attachDataDevice(mem, 0, 4096, 0,"",true);
+		memoryBus.attachDataDevice(memVideo, 0xB0000,  0xB0000+4096, 0xB0000,"",true); // B000:0 MDA Display RAM
+		memoryBus.attachDataDevice(memVideo, 0xB8000,  0xB8000+4096, 0xB8000,"",true); // B800:0 CGA Display RAM
 		
 		// Control BUS
 		DeviceConfiguration configControlBus = new DeviceConfiguration("","");

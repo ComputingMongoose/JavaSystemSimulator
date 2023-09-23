@@ -16,6 +16,7 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 	
 	ArrayList<String> transmit;
 	int transmit_current_bit;
+	int transmit_current_char;
 	int receive;
 	int receive_current_bit;
 	
@@ -31,6 +32,7 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 	//int bit_transmit_start;
 	int receive_ignore_bit_7;
 	int transmit_set_bit_7;
+	int data_send_ready_bit;
 	
 	int[] map_send;
 	int[] map_receive;
@@ -47,8 +49,10 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 		
 		transmit=new ArrayList<>(100);
 		transmit_current_bit=0;
+		transmit_current_char=0;
 		receive=0;
 		receive_current_bit=0;
+		data_send_ready_bit=0;
 		
 		map_send=new int[256];
 		map_receive=new int[256];
@@ -64,6 +68,8 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 		transmit_bit_number=(int) config.getOptLong("transmit_bit_number", 0);
 		receive_bit_number=(int) config.getOptLong("receive_bit_number", 0);
 		
+		data_send_ready_bit=(int) config.getOptLong("uart_status_data_send_ready_bit", 0);
+
 		bit_send_complement=(int) config.getOptLong("bit_send_complement", 1);
 		bit_transmit_empty=(int) config.getOptLong("bit_transmit_empty", 0);
 		//bit_transmit_start=(int) config.getOptLong("bit_transmit_start", 1);
@@ -89,57 +95,81 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 			ConfigurationValueOptionException, IOException {
 		transmit.clear();
 		transmit_current_bit=0;
+		transmit_current_char=0;
+	}
+	
+	protected boolean isTransmitDataAvailable() {
+		boolean ret=false;
+		synchronized(lock) {
+			ret=!transmit.isEmpty();
+		}
+		return ret;
+	}
+	
+	protected int getNextTransmitChar() {
+		int ret=0;
+		synchronized(lock) {
+			ret=(int)transmit.get(0).charAt(0);
+			transmit.remove(0);
+		}
+		return ret;
 	}
 
 	@Override
 	public long read(long address) throws MemoryAccessException {
+		long ret=0;
 		if(address==0) { // DATA PORT
-			if(transmit.isEmpty()) {
+			if(!isTransmitDataAvailable() && transmit_current_bit==0) {
 				getTransmitData();
-				if(transmit.isEmpty()) {
+				if(!isTransmitDataAvailable()) {
 					
-					if(uart==1)return 0;
-					else return bit_transmit_empty<<transmit_bit_number;
+					if(uart==1)ret= 0;
+					else ret=bit_transmit_empty<<transmit_bit_number;
 				}
-			}
-			
-			if(uart==1) {
-				int data=map_send[(int)transmit.get(0).charAt(0)];
-				transmit.remove(0);
-				if(uart_send_complement==1)data^=0xFF;
-				return data;
 			}else {
-				transmit_current_bit++;
-				
-				if(transmit_current_bit==1) {
-					return (bit_transmit_empty^0x1)<<transmit_bit_number;
-				}
-				
-				if(transmit_current_bit>=2 && transmit_current_bit<=9) {
-					if(transmit_set_bit_7==1 && transmit_current_bit==9) {
-						return 1<<transmit_bit_number;//(1^bit_send_complement)<<transmit_bit_number; // complement						
+			
+				if(uart==1) {
+					int data=map_send[getNextTransmitChar()];
+					if(uart_send_complement==1)data^=0xFF;
+					ret= data;
+				}else {
+					transmit_current_bit++;
+					
+					if(transmit_current_bit==1) {
+						ret= (bit_transmit_empty^0x1)<<transmit_bit_number;
+					}else if(transmit_current_bit>=2 && transmit_current_bit<=9) {
+						if(transmit_set_bit_7==1 && transmit_current_bit==9) {
+							ret= 1<<transmit_bit_number;//(1^bit_send_complement)<<transmit_bit_number; // complement						
+						}else {
+							if(transmit_current_bit==2) {
+								transmit_current_char=getNextTransmitChar();
+							}
+							ret= ((((int)(map_send[transmit_current_char])>>(transmit_current_bit-2))&0x1)^bit_send_complement)<<transmit_bit_number; // complement
+						}
+					}else if(transmit_current_bit==10)ret= (bit_send_complement^0x1)<<transmit_bit_number;
+					else if(transmit_current_bit==11) {
+						transmit_current_bit=0;
 					}
-					return ((((int)(map_send[transmit.get(0).charAt(0)])>>(transmit_current_bit-2))&0x1)^bit_send_complement)<<transmit_bit_number; // complement
+					ret= (bit_send_complement^0x1)<<transmit_bit_number;
 				}
-				
-				if(transmit_current_bit==10)return (bit_send_complement^0x1)<<transmit_bit_number;
-				
-				if(transmit_current_bit==11) {
-					transmit_current_bit=0;
-					transmit.remove(0);
-				}
-				return (bit_send_complement^0x1)<<transmit_bit_number;
 			}
 		}else { // STATUS PORT (address=1)
-			int status=0x00;
-			if(transmit.isEmpty())status|=1; // no data available
+			int status=0xFF;
+			if(!isTransmitDataAvailable())status^=1<<data_send_ready_bit; // no data available bit 1 or 2 ?
+
+			if(uart_send_complement==1)status^=0xFF;
 			
-			return status;
+			ret= status;
 		}
+		
+		//if(address!=1 || ret!=0xFD)System.out.println(String.format("AbstractSerialPort read %2X %2X",address,ret));
+		return ret;
 	}
 	
 	@Override
 	public void write(long address, long value) throws MemoryAccessException {
+		//System.out.println(String.format("AbstractSerialPort write %2X %2X",address,value));
+		
 		if(address==0) { // data port
 			if(uart==1) {
 				if(uart_receive_complement==1)value^=0xFF;

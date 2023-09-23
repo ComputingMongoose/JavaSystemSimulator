@@ -282,7 +282,7 @@ public class Intellec_8_frontpanel implements GenericControlDevice, GenericExecu
 	@SuppressWarnings("serial")
 	class FrontWindow extends JFrame{
 		public FrontWindow() {
-			super("Intellec 4/40 FrontPanel");
+			super("Intellec 8 FrontPanel");
 			setSize(1800,763);
 			setDefaultCloseOperation(EXIT_ON_CLOSE);
 			Cursor cur = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);

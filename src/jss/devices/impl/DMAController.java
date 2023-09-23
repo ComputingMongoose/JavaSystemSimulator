@@ -1,7 +1,6 @@
 package jss.devices.impl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
 import jss.configuration.DeviceConfiguration;

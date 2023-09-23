@@ -1,19 +1,13 @@
 package jss.devices.impl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
 import jss.configuration.DeviceConfiguration;
 import jss.configuration.DeviceConfigurationException;
-import jss.devices.GenericControlDevice;
 import jss.devices.GenericDataDevice;
-import jss.devices.GenericExecutionDevice;
-import jss.devices.bus.ControlBus;
-import jss.devices.bus.ControlBusUnknownSignalException;
 import jss.devices.bus.DataBus;
 import jss.devices.bus.DataBusDevice;
-import jss.devices.cpu.CPUInvalidOpcodeException;
 import jss.devices.memory.MemoryAccessException;
 import jss.simulation.Simulation;
 
@@ -66,7 +60,7 @@ public class Switch implements GenericDataDevice, DataBus {
 	}
 
 	@Override
-	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset) {
+	public void attachDataDevice(GenericDataDevice device, long start, long end, long offset,String name,boolean enabled) {
 		if(numAttached>=2) {
 			sim.writeToCurrentLog("SWITCH: Already has 2 attached devices");
 			return;
@@ -74,7 +68,13 @@ public class Switch implements GenericDataDevice, DataBus {
 		if(start!=0 || end!=0) {
 			sim.writeToCurrentLog("SWITCH: start and end address will be set to 0");
 		}
-		devices[numAttached++]=new DataBusDevice(device,0,0,offset);
+		devices[numAttached++]=new DataBusDevice(device,0,0,offset,name,enabled);
+	}
+
+	@Override
+	public DataBusDevice getDeviceByConnectionName(String name) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 }

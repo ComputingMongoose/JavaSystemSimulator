@@ -14,7 +14,6 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
-import java.awt.image.BufferedImageOp;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
@@ -31,7 +30,6 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 import javax.imageio.ImageIO;
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 
@@ -220,7 +218,7 @@ public class ASR33Teletype extends AbstractSerialDevice {
 		super.configure(config, sim);
 
 		imgFrontPanel = ImageIO.read(getClass().getResource("/res/ASR33Teletype/asr33.png"));
-		imgLoad = ImageIO.read(getClass().getResource("/res/ASR33Teletype/load.png"));
+		imgLoad = ImageIO.read(getClass().getResource("/res/common/load.png"));
 		
 		enable_load_tape=(int)config.getOptLong("enable_load_tape", 1);
 
@@ -405,6 +403,8 @@ public class ASR33Teletype extends AbstractSerialDevice {
 			) {
 				received_text[received_text_pointer].append((char)data);
 				synchronized(lock) {needsUpdate=true;}
+			}else {
+				this.sim.writeToCurrentLog(String.format("ASR33Teletype received invalid character [%2X]",data));
 			}
 		}
 		//win.repaint(420, 0, 560, 300);
@@ -419,10 +419,10 @@ public class ASR33Teletype extends AbstractSerialDevice {
 				if(tape_in_reader!=null)tape_active=true;
 			}
 		}else {
-			if(value==9) { // TTYGO
+			if(value==9 || value==0x27) { // TTYGO
 				tape_active=true;
 				getTransmitData();
-			}else if(value==8) { // TTYNO
+			}else if(value==8 || value==0x25) { // TTYNO
 				tape_active=false;
 			}
 		}
