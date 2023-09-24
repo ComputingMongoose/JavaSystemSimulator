@@ -17,6 +17,10 @@ Example simulations are available in the Simulations project: https://github.com
 
 Checkout my YouTube channel for videos about this project: https://www.youtube.com/@ComputingMongoose/
 
+# Website
+
+Checkout my website: https://ComputingMongoose.github.io
+
 
 ## License
 
