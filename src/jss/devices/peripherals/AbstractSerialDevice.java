@@ -150,7 +150,7 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 					else if(transmit_current_bit==11) {
 						transmit_current_bit=0;
 					}
-					ret= (bit_send_complement^0x1)<<transmit_bit_number;
+					//ret= (bit_send_complement^0x1)<<transmit_bit_number;
 				}
 			}
 		}else { // STATUS PORT (address=1)
