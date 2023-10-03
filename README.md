@@ -13,6 +13,8 @@ The simulation folder must contain a simulation.json file with the simulation co
 
 Example simulations are available in the Simulations project: https://github.com/ComputingMongoose/Simulations
 
+Some CPU implementations make use of the [JSSCPUSpecCompiler](https://github.com/ComputingMongoose/JSSCPUSpecCompiler) with a [CPUSpecification](https://github.com/ComputingMongoose/CPUSpecifications) file. You don't need these two projects to run the JavaSystemSimulator. However, if you plan to write code for a new CPU, you may find these two projects useful.
+
 # Youtube
 
 Checkout my YouTube channel for videos about this project: https://www.youtube.com/@ComputingMongoose/
