@@ -18,6 +18,18 @@ public class TelnetTerminal extends AbstractSerialDevice {
 	
 	int port;
 	ServerSocket serverSocket;
+	boolean raw_socket; // set to true to use raw_socket protocol
+	
+	public static final int IAC = 0xff;
+    public static final int IAC_WILL = 0xfb;
+    public static final int IAC_DO = 0xfd;
+    public static final int IAC_DONT = 0xfe;
+    public static final int IAC_ECHO = 0x01;
+    public static final int IAC_BINARY = 0x00;
+    public static final int IAC_SGA = 0x03;
+    public static final int IAC_NAWS = 0x1f;
+    public static final int IAC_SB = 0xfa;
+    public static final int IAC_SE = 0xf0;	
 	
 	class ClientData {
 		Socket sock;
@@ -25,9 +37,20 @@ public class TelnetTerminal extends AbstractSerialDevice {
 		OutputStream out;
 		
 		ArrayList<String> tosend;
+		
+		boolean doInit;
+		boolean raw;
+		
+		int state; // 0 = regular, 1=IAC
+		int []iac_bytes;
+		int iac_current;
 	}
 	
 	ClientData[] clients;
+	
+	public static void writeBytes(OutputStream out, int[] bytes) throws IOException {
+		for(int b:bytes)out.write(b);
+	}
 
 	class ThreadClient extends Thread {
 		@Override
@@ -41,9 +64,44 @@ public class TelnetTerminal extends AbstractSerialDevice {
 					}
 					if(client!=null) {
 						try {
+							if(client.doInit) {
+								writeBytes(client.out, new int[] {
+										IAC, IAC_WILL, IAC_ECHO,
+										IAC, IAC_DO, IAC_SGA,
+										IAC, IAC_WILL, IAC_SGA,
+										IAC, IAC_DO, IAC_BINARY,
+										IAC, IAC_WILL, IAC_BINARY,
+										IAC, IAC_DONT, IAC_NAWS
+								});
+								client.doInit=false;
+							}
 							if(client.in.available()>0) {
 								int c=client.in.read();
-								synchronized(lock) {transmit.add(""+(char)c);}
+								boolean send=true;
+								if(!client.raw) {
+									switch(client.state) {
+									case 0:
+										if(c==IAC) {
+											client.state=1;
+											client.iac_current=0;
+											if(client.iac_bytes==null)client.iac_bytes=new int[10];
+											send=false;
+										}
+										break;
+									case 1: // IAC received
+										client.iac_bytes[client.iac_current]=c;
+										client.iac_current++;
+										if(client.iac_current==2) {
+											client.state=0;
+											sim.writeToCurrentLog(String.format("Received Telnet IAC command %X %X", client.iac_bytes[0],client.iac_bytes[1]));
+										}
+										send=false;
+										break;
+									}
+								}
+								if(send) {
+									synchronized(lock) {transmit.add(""+(char)c);}
+								}
 								work=true;
 							}
 							
@@ -100,14 +158,16 @@ public class TelnetTerminal extends AbstractSerialDevice {
 						client.in=sock.getInputStream();
 						client.out=sock.getOutputStream();
 						client.tosend=new ArrayList<String>(10);
+						client.raw=true;
 						
 						boolean found=false;
 						synchronized(lock) {
+							if(!raw_socket) {client.doInit=true;client.raw=false;}
 							for(int i=0;i<clients.length;i++)
 								if(clients[i]==null) {clients[i]=client; found=true; break;}
 						}
 						if(!found) {
-							System.out.println("TelnetTerminal: Too many connections");
+							sim.writeToCurrentLog("TelnetTerminal: Too many connections");
 							sock.close();
 						}
 					}
@@ -127,14 +187,19 @@ public class TelnetTerminal extends AbstractSerialDevice {
 		
 		port=(int) config.getLong("port");
 		String address=config.getOptString("address", "127.0.0.1");
+		
+		sim.writeToCurrentLog(String.format("%s will listen on port %d for telnet connections",config.getName(),port));
+		
 		String []adr=address.split("[.]");
 		byte[] adrb=new byte[adr.length];
 		for(int i=0;i<adr.length;i++)adrb[i]=Byte.parseByte(adr[i]);
 		
-		clients=new ClientData[100];
+		clients=new ClientData[(int)config.getOptLong("max_clients", 100)];
 		for(int i=0;i<clients.length;i++)clients[i]=null;
 		
 		serverSocket=new ServerSocket(port,20, InetAddress.getByAddress(adrb));
+		
+		raw_socket=(config.getOptLong("raw_socket", 0)==1);
 		
 		new ThreadServer().start();
 		new ThreadClient().start();

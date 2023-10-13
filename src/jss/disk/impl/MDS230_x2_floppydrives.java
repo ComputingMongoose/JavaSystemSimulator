@@ -198,7 +198,7 @@ public class MDS230_x2_floppydrives implements GenericMultiDevice {
 		driveCfg=config.clone();
 		driveCfg.set("load_disk",new ConfigurationValue(config.getOptString("load_disk_1", "")));
 		driveCfg.set("use_overlay",new ConfigurationValue(config.getOptLong("use_overlay_1", 0)));
-		drives[1].configure(config, sim);
+		drives[1].configure(driveCfg, sim);
 		
 		imgFrontPanel = ImageIO.read(getClass().getResource("/res/MDS230_x2_floppydrives/frontpanel.jpg"));
 		imgLoad = ImageIO.read(getClass().getResource("/res/common/load.png"));

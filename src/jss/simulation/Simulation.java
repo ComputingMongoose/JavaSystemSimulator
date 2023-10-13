@@ -113,7 +113,10 @@ public class Simulation extends Thread {
 	
 	private ArrayList<GenericExecutionDevice> skipClock;
 	
+	private SystemSettings systemSettings;
+	
 	private Simulation() {
+		this.systemSettings=SystemSettings.getSystemSettings();
 		this.devices=new HashMap<>(100);
 		this.executionDevices=new ArrayList<>(100);
 		this.lock=new Object();
@@ -451,5 +454,9 @@ public class Simulation extends Thread {
 			return new Intel8080Disassembler();
 		}
 		return null;
+	}
+
+	public SystemSettings getSystemSettings() {
+		return systemSettings;
 	}
 }

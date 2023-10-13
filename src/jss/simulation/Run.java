@@ -16,6 +16,9 @@ public class Run {
 			return ;
 		}
 		
+		SystemSettings settings=SystemSettings.getSystemSettings();
+		System.out.println(String.format("Java System Simulator version %s",settings.getVersion()));
+		System.out.println("https://github.com/ComputingMongoose/JavaSystemSimulator\n");
 		System.out.println("Running simulation "+args[0]);
 		Simulation sim=Simulation.loadFromFolder(args[0]);
 		sim.start();

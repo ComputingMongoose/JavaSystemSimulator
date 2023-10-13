@@ -73,11 +73,13 @@ public class SimulationControl implements GenericDevice {
 			String name=sim.getSimulationName();
 			
 			textArea.setText(
+				"Java System Simulator version: "+sim.getSystemSettings().getVersion()+"\n"+
+				"Check latest version at: https://github.com/ComputingMongoose/JavaSystemSimulator\n\n"+
 				"Simulation: "+name+"\n"
 				+"Maximum steps: "+sim.getMaxSteps()+"\n"
 				+"Delay between steps: "+sim.getDelayBetweenSteps_ms()+"ms, "+sim.getDelayBetweenSteps_ns()+" ns\n"
 				//+"Number of devices: "+sim.getNumberOfDevices()+"\n"
-				+"Log:\n"+sim.getCurrentLog()
+				+"\nSimulation log:\n"+sim.getCurrentLog()
 			);
 		}
 		
