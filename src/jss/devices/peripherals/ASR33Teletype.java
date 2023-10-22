@@ -1,21 +1,12 @@
 package jss.devices.peripherals;
 
-import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.FileDialog;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,33 +17,21 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Map.Entry;
-
 import javax.imageio.ImageIO;
-import javax.swing.JFrame;
-import javax.swing.Timer;
-
 import jss.configuration.ConfigurationValueTypeException;
 import jss.configuration.DeviceConfiguration;
 import jss.configuration.DeviceConfigurationException;
 import jss.devices.memory.MemoryAccessException;
+import jss.devices.peripherals.TerminalUtils.AbstractTerminal;
+import jss.devices.peripherals.TerminalUtils.TerminalFont;
+import jss.devices.peripherals.TerminalUtils.TerminalKeyListener;
+import jss.devices.peripherals.TerminalUtils.TerminalStatus;
+import jss.devices.peripherals.TerminalUtils.TerminalTextRenderer;
 import jss.simulation.Simulation;
 
-public class ASR33Teletype extends AbstractSerialDevice {
+public class ASR33Teletype extends AbstractTerminal {
 
-	BufferedImage imgFrontPanel;
-	BufferedImage imgLoad;
-	//BufferedImage imgSave;
-	
 	int enable_load_tape;
-	
-	StringBuffer[] received_text;
-	int received_text_pointer;
-	
-	boolean needsUpdate;
-	
-	HashMap<String,PeripheralSwitch> switches;
 	
 	boolean tape_active;
 	String tape_in;
@@ -60,59 +39,10 @@ public class ASR33Teletype extends AbstractSerialDevice {
 	
 	int tape_in_compute_checksums;
 	
-	class FrontWindowMouseListener implements MouseListener {
-
-		@Override
-		public void mouseClicked(MouseEvent arg0) {
-			int x=arg0.getX() * imgFrontPanel.getWidth()/win.getWidth();
-			int y=arg0.getY() * imgFrontPanel.getHeight()/win.getHeight();
-			
-			for(Entry <String,PeripheralSwitch> e:switches.entrySet()) {
-				PeripheralSwitch s=e.getValue();
-				String key=e.getKey();
-				if(x>=s.x && x<=s.x+s.w && y>=s.y && y<=s.y+s.h) {
-					//s.on=!s.on;
-					PeripheralSwitchClicked(key,s);
-					//win.repaint();
-					break;
-				}
-			}
+	class FrontWindowKeyListener extends TerminalKeyListener {
+		public FrontWindowKeyListener(TerminalStatus status) {
+			super(status);
 		}
-		
-		public void PeripheralSwitchClicked(String key, PeripheralSwitch sw) {
-			if(key.contentEquals("LOAD")) {
-				FileDialog fd=new FileDialog(win,"Load Tape",FileDialog.LOAD);
-				fd.setVisible(true);
-				File[] files=fd.getFiles();
-				if(files!=null && files.length>0) {
-					loadTape(files[0]);
-				}
-			}else {
-				synchronized(lock) {transmit.add(key);}
-			}
-		}
-
-		@Override
-		public void mouseEntered(MouseEvent arg0) {;}
-
-		@Override
-		public void mouseExited(MouseEvent arg0) {;}
-
-		@Override
-		public void mousePressed(MouseEvent arg0) {;}
-
-		@Override
-		public void mouseReleased(MouseEvent arg0) {;}
-		
-	}
-	
-	class FrontWindowKeyListener implements KeyListener {
-
-		@Override
-		public void keyPressed(KeyEvent arg0) {;}
-
-		@Override
-		public void keyReleased(KeyEvent arg0) {;}
 
 		@Override
 		public void keyTyped(KeyEvent arg0) {
@@ -128,109 +58,36 @@ public class ASR33Teletype extends AbstractSerialDevice {
 					c==']' || c=='<' || c=='>' || c==',' || c=='.' || c=='?' ||
 					c=='/'
 			) {
-				synchronized(lock) {transmit.add(""+c);}
+				status.transmitChar(c);
 			}else if(c==13 || c==10) {
-				synchronized(lock) {transmit.add("\r");}
+				status.transmitChar('\r');
 			}
 		}
 	}
 	
-	@SuppressWarnings("serial")
-	class FrontWindow extends JFrame{
-		public FrontWindow() {
-			super("ASR 33 Teletype");
-			this.setLayout(null);
-
-			setSize(1600,992);
-			setDefaultCloseOperation(EXIT_ON_CLOSE);
-			Cursor cur = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
-			this.setCursor(cur);
-			this.addMouseListener(new FrontWindowMouseListener());
-			this.addKeyListener(new FrontWindowKeyListener());
-			
-			setVisible(true);
-			
-			Timer timer = new Timer(100, new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                	boolean doit=false;
-                	synchronized(lock) {
-                		if(needsUpdate) {doit=true; needsUpdate=false;}
-                	}
-                	if(doit)repaint();
-                }
-            });	
-			timer.start();
-			
-		}
-		
-		@Override
-		public void paint(Graphics g) {
-			//super.paint(g);
-			
-			ColorModel cm = imgFrontPanel.getColorModel();
-			boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
-			WritableRaster raster = imgFrontPanel.copyData(null);
-			BufferedImage back=new BufferedImage(cm, raster, isAlphaPremultiplied, null);
-			
-			Graphics2D g2=(Graphics2D)back.getGraphics();
-
-			int x=440;
-			int y=40;
-			g2.setFont(new Font("Consolas",Font.BOLD,12));
-			g2.setColor(Color.BLACK);
-			int height = g2.getFontMetrics().getHeight();
-
-			for ( int i=received_text_pointer+1;i<received_text.length;i++ ) {
-				String ctext=null;
-				synchronized(lock) {
-					ctext=received_text[i].toString();
-				}
-				g2.drawString( ctext, x, y + height );
-				y += height;
-			}			
-			for ( int i=0;i<=received_text_pointer;i++ ) {
-				String ctext=null;
-				synchronized(lock) {
-					ctext=received_text[i].toString();
-				}
-				g2.drawString( ctext, x, y + height );
-				y += height;
-			}
-			
-			if(enable_load_tape==1) {
-				g2.drawImage(imgLoad.getScaledInstance(100, 100, Image.SCALE_SMOOTH), 85,100,null);
-			}
-			
-			Image img=back.getScaledInstance(this.getWidth(), this.getHeight(), Image.SCALE_SMOOTH);
-			g.drawImage(img,0,0,null);
-			
-		}
+	@Override
+	public KeyListener getKeyListener() {
+		return new FrontWindowKeyListener(status);
 	}
-	
-	FrontWindow win;
-	
 	
 	@Override
 	public void configure(DeviceConfiguration config, Simulation sim)
 			throws DeviceConfigurationException, ConfigurationValueTypeException, IOException {
 		
 		super.configure(config, sim);
+		this.setStartWidth(1600);
+		this.setStartHeight(992);
+		this.setTitle("ASR 33 Teletype");
+		
+		status.setCursorCharacter(0);
 
 		imgFrontPanel = ImageIO.read(getClass().getResource("/res/ASR33Teletype/asr33.png"));
-		imgLoad = ImageIO.read(getClass().getResource("/res/common/load.png"));
 		
 		enable_load_tape=(int)config.getOptLong("enable_load_tape", 1);
 
-		received_text=new StringBuffer[14];
-		for(int i=0;i<received_text.length;i++) {
-			received_text[i]=new StringBuffer();
-			//received_text[i].append("12345678901234567890123456789012345678901234567890123456789012345678901234");
-		}
-		received_text_pointer=received_text.length-1;
+		num_lines=15;
 		
-		switches=new HashMap<>(100);
-		// Address/Data
+		// Keyboard => maybe this can be removed ?
 		switches.put("1", new PeripheralSwitch(360,647,45,52,false,null,null));
 		switches.put("2", new PeripheralSwitch(415,647,45,52,false,null,null));
 		switches.put("3", new PeripheralSwitch(471,647,45,52,false,null,null));
@@ -245,10 +102,21 @@ public class ASR33Teletype extends AbstractSerialDevice {
 		switches.put("_", new PeripheralSwitch(975,647,45,52,false,null,null));
 		
 		if(enable_load_tape==1) {
-			switches.put("LOAD", new PeripheralSwitch(85,100,100,100,false,null,null));
+			BufferedImage imgLoad = ImageIO.read(getClass().getResource("/res/common/load.png"));
+			PeripheralSwitch sw=new PeripheralSwitch(85,100,100,100,false,imgLoad,imgLoad);
+			sw.setActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					FileDialog fd=new FileDialog(win,"Load Tape",FileDialog.LOAD);
+					fd.setVisible(true);
+					File[] files=fd.getFiles();
+					if(files!=null && files.length>0) {
+						loadTape(files[0]);
+					}
+				}
+			});
+			switches.put("LOAD", sw);
 		}
-		
-		needsUpdate=false;;
 		
 		tape_active=false;
 		this.tape_in_compute_checksums=(int)config.getOptLong("tape_in_compute_checksums", 0);
@@ -258,8 +126,11 @@ public class ASR33Teletype extends AbstractSerialDevice {
 			loadTape(sim.getFilePath(tape_in).toFile());
 		}
 		
-		win=new FrontWindow();
-		win.repaint();
+		TerminalFont font=new TerminalFont("/res/common/CGA_D.F16", 256, 8, 16, 0xFF000000, 0x00FFFFFF);
+		TerminalTextRenderer renderer=new TerminalTextRenderer(font,80,num_lines);
+		renderer.setBgColor(0x00000000);
+		status.setRenderer(renderer);
+
 	}
 	
 	public void loadTape(File tapeFile) {
@@ -382,12 +253,11 @@ public class ASR33Teletype extends AbstractSerialDevice {
 
 	@Override
 	public void writeData(int data) throws MemoryAccessException {
+		winSaveFile.writeData(data);
+
 		if(data==13) {
-			received_text_pointer++;
-			if(received_text_pointer>=received_text.length)received_text_pointer=0;
-			received_text[received_text_pointer].setLength(0);
-			synchronized(lock) {needsUpdate=true;}
-			
+			status.advanceCursorY();
+			status.setCur_x(0);
 		}else if(data==10) {
 			;
 		}else {
@@ -401,14 +271,12 @@ public class ASR33Teletype extends AbstractSerialDevice {
 					c==']' || c=='<' || c=='>' || c==',' || c=='.' || c=='?' ||
 					c=='/'
 			) {
-				received_text[received_text_pointer].append((char)data);
-				synchronized(lock) {needsUpdate=true;}
+				status.setCurrentChar(data);
+				status.advanceCursorX();
 			}else {
 				this.sim.writeToCurrentLog(String.format("ASR33Teletype received invalid character [%2X]",data));
 			}
 		}
-		//win.repaint(420, 0, 560, 300);
-		
 	}
 
 	@Override
@@ -433,10 +301,23 @@ public class ASR33Teletype extends AbstractSerialDevice {
 		if(!tape_active || tape_in_reader==null)return;
 		
 		try {
-			int c=tape_in_reader.read();
-			transmit.add(""+(char)c);
-			System.out.print((char)c);
+			status.transmitChar(tape_in_reader.read());
 		}catch(IOException ex) {;}
+	}
+
+	@Override
+	public Rectangle getTextRect() {
+		return new Rectangle(440,20,960-440,275-20);
+	}
+
+	@Override
+	public Rectangle getSwitchSendFileRect() {
+		return new Rectangle(1050,20,50,50);
+	}
+
+	@Override
+	public Rectangle getSwitchSaveFileRect() {
+		return new Rectangle(1100,20,50,50);
 	}
 
 }

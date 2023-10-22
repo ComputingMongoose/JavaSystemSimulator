@@ -38,10 +38,10 @@ public class IntellecIMM8_90 extends AbstractSerialDevice {
 	@Override
 	public long read(long address) throws MemoryAccessException {
 		if(address==1) {
-			int status=0x00;
-			if(!transmit.isEmpty())status=0x20; // data available
+			int istatus=0x00;
+			if(status.isTransmitDataAvailable())istatus=0x20; // data available
 			
-			return status;
+			return istatus;
 			
 		}else
 			return super.read(address);
@@ -66,11 +66,7 @@ public class IntellecIMM8_90 extends AbstractSerialDevice {
 			Timer timer = new Timer(100, new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                	boolean doit=false;
-                	synchronized(lock) {
-                		if(needsUpdate) {doit=true; needsUpdate=false;}
-                	}
-                	if(doit)repaint();
+                	if(status.getAndResetNeedsUpdate())repaint();
                 }
             });	
 			timer.start();
@@ -144,8 +140,7 @@ public class IntellecIMM8_90 extends AbstractSerialDevice {
 		if(!tape_active || tape_in_reader==null)return;
 		
 		try {
-			int c=tape_in_reader.read();
-			transmit.add(""+(char)c);
+			status.transmitChar(tape_in_reader.read());
 		}catch(IOException ex) {;}
 	}
 

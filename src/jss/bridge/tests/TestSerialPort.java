@@ -23,23 +23,26 @@ public class TestSerialPort {
 		}
 		
 		externalPort=SerialPort.getCommPort("COM4");
-		int baudRate=38400;
+		int baudRate=9600;
 		int dataBits=8;
 		int stopBits=SerialPort.ONE_STOP_BIT;// .TWO_STOP_BITS;
 		int parity=SerialPort.NO_PARITY;// .EVEN_PARITY;
 
 		externalPort.openPort();
 
-		externalPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING | SerialPort.TIMEOUT_WRITE_BLOCKING, 5*1000, 5*1000);
+		externalPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING | SerialPort.TIMEOUT_WRITE_BLOCKING, 30*1000, 5*1000);
 		externalPort.setComPortParameters(baudRate, dataBits, stopBits, parity);
 		externalPort.setFlowControl(SerialPort.FLOW_CONTROL_DISABLED);
+		
+		externalPort.writeBytes(new byte[] {'A', 'B'},2);
 		
 		
 		InputStream in=externalPort.getInputStream();
 		OutputStream out=externalPort.getOutputStream();
 		
-		//out.write('A');
-		//out.write('B');
+		out.write('A');
+		out.write('B');
+		out.flush();
 		
 		//byte []buff=new byte[1];
 		//externalPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 60*1000, 60*1000);
@@ -47,7 +50,7 @@ public class TestSerialPort {
 		//System.out.println("read= "+n+" bytes");
 		
 		char c=(char) in.read();
-		
+		System.out.println("Char read:"+c);
 		
 		//in.close();
 		//out.close();

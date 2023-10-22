@@ -113,11 +113,7 @@ public class SerialPortTerminal extends AbstractSerialDevice {
 						Thread.sleep(1);
 					byte[] readBuffer = new byte[externalPort.bytesAvailable()];
 					int numRead = externalPort.readBytes(readBuffer, readBuffer.length);
-					synchronized(lock) {
-						for(int i=0;i<numRead;i++) {
-							transmit.add(""+(char)(readBuffer[i]));
-						}
-					}
+					status.transmitChars(readBuffer,numRead);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

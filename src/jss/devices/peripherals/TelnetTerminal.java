@@ -20,6 +20,8 @@ public class TelnetTerminal extends AbstractSerialDevice {
 	ServerSocket serverSocket;
 	boolean raw_socket; // set to true to use raw_socket protocol
 	
+	private Object clientLock;
+	
 	public static final int IAC = 0xff;
     public static final int IAC_WILL = 0xfb;
     public static final int IAC_DO = 0xfd;
@@ -59,7 +61,7 @@ public class TelnetTerminal extends AbstractSerialDevice {
 				boolean work=false;
 				for(int i=0;i<clients.length;i++) {
 					ClientData client=null;
-					synchronized(lock) {
+					synchronized(clientLock) {
 						client=clients[i];
 					}
 					if(client!=null) {
@@ -100,7 +102,7 @@ public class TelnetTerminal extends AbstractSerialDevice {
 									}
 								}
 								if(send) {
-									synchronized(lock) {transmit.add(""+(char)c);}
+									status.transmitChar(c);
 								}
 								work=true;
 							}
@@ -124,7 +126,7 @@ public class TelnetTerminal extends AbstractSerialDevice {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
-							synchronized(lock) {clients[i]=null;}
+							synchronized(clientLock) {clients[i]=null;}
 						}
 					}
 				}
@@ -161,7 +163,7 @@ public class TelnetTerminal extends AbstractSerialDevice {
 						client.raw=true;
 						
 						boolean found=false;
-						synchronized(lock) {
+						synchronized(clientLock) {
 							if(!raw_socket) {client.doInit=true;client.raw=false;}
 							for(int i=0;i<clients.length;i++)
 								if(clients[i]==null) {clients[i]=client; found=true; break;}
@@ -200,6 +202,7 @@ public class TelnetTerminal extends AbstractSerialDevice {
 		serverSocket=new ServerSocket(port,20, InetAddress.getByAddress(adrb));
 		
 		raw_socket=(config.getOptLong("raw_socket", 0)==1);
+		this.clientLock=new Object();
 		
 		new ThreadServer().start();
 		new ThreadClient().start();
@@ -215,7 +218,7 @@ public class TelnetTerminal extends AbstractSerialDevice {
 	public void writeData(int value) throws MemoryAccessException {
 		for(int i=0;i<clients.length;i++) {
 			ClientData client=null;
-			synchronized(lock) { client=clients[i];}
+			synchronized(clientLock) { client=clients[i];}
 			if(client!=null) {
 				synchronized(client) {
 					client.tosend.add(""+(char)value);

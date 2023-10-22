@@ -1,43 +1,42 @@
 package jss.devices.peripherals;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import jss.configuration.ConfigurationValueOptionException;
 import jss.configuration.ConfigurationValueTypeException;
 import jss.configuration.DeviceConfiguration;
 import jss.configuration.DeviceConfigurationException;
 import jss.devices.GenericDataDevice;
 import jss.devices.memory.MemoryAccessException;
+import jss.devices.peripherals.TerminalUtils.TerminalStatus;
 import jss.simulation.Simulation;
 
 public abstract class AbstractSerialDevice implements GenericDataDevice {
 
-	Simulation sim;
+	protected Simulation sim;
 	
-	ArrayList<String> transmit;
-	int transmit_current_bit;
-	int transmit_current_char;
-	int receive;
-	int receive_current_bit;
+	protected int transmit_current_bit;
+	protected int transmit_current_char;
+	protected int receive;
+	protected int receive_current_bit;
 	
-	int uart;
-	int uart_receive_complement;
-	int uart_send_complement;
+	protected int uart;
+	protected int uart_receive_complement;
+	protected int uart_send_complement;
 	
-	int transmit_bit_number;
-	int receive_bit_number;
+	protected int transmit_bit_number;
+	protected int receive_bit_number;
 	
-	int bit_send_complement;
-	int bit_transmit_empty;
+	protected int bit_send_complement;
+	protected int bit_transmit_empty;
 	//int bit_transmit_start;
-	int receive_ignore_bit_7;
-	int transmit_set_bit_7;
-	int data_send_ready_bit;
+	protected int receive_ignore_bit_7;
+	protected int transmit_set_bit_7;
+	protected int data_send_ready_bit;
 	
-	int[] map_send;
-	int[] map_receive;
+	protected int[] map_send;
+	protected int[] map_receive;
 	
-	Object lock;
+	protected TerminalStatus status;
 	
 	@Override
 	public void configure(DeviceConfiguration config, Simulation sim)
@@ -45,9 +44,8 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 		
 		this.sim=sim;
 		
-		lock=new Object();
+		status=new TerminalStatus(config,sim);
 		
-		transmit=new ArrayList<>(100);
 		transmit_current_bit=0;
 		transmit_current_char=0;
 		receive=0;
@@ -93,26 +91,17 @@ public abstract class AbstractSerialDevice implements GenericDataDevice {
 	@Override
 	public void initialize() throws DeviceConfigurationException, ConfigurationValueTypeException,
 			ConfigurationValueOptionException, IOException {
-		transmit.clear();
+		status.transmitClear();
 		transmit_current_bit=0;
 		transmit_current_char=0;
 	}
 	
 	protected boolean isTransmitDataAvailable() {
-		boolean ret=false;
-		synchronized(lock) {
-			ret=!transmit.isEmpty();
-		}
-		return ret;
+		return status.isTransmitDataAvailable();
 	}
 	
 	protected int getNextTransmitChar() {
-		int ret=0;
-		synchronized(lock) {
-			ret=(int)transmit.get(0).charAt(0);
-			transmit.remove(0);
-		}
-		return ret;
+		return status.getNextTransmitChar();
 	}
 
 	@Override
